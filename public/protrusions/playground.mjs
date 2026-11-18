@@ -1,5 +1,5 @@
 const release=new URL(import.meta.url).search;
-const [{defaultSettings,hostNames,palette,ticks,types},{draw},{decode}]=await Promise.all([
+const [{defaultSettings,hostNames,palette,simulate,ticks,types},{draw},{decode}]=await Promise.all([
   import('./model.mjs'+release),
   import('../press/render.mjs'+release),
   import('./raster.mjs'+release)
@@ -8,8 +8,8 @@ const [{defaultSettings,hostNames,palette,ticks,types},{draw},{decode}]=await Pr
 const $=id=>document.getElementById(id);
 const controls=[], typeButtons=[], conditions=['open','mixed'];
 const copySettings=settings=>JSON.parse(JSON.stringify(settings));
-let cfg=copySettings(defaultSettings), runs=null, displayedCfg=null, worker=null, waiting=null;
-let time=0, selection=null, timer=null, request=0, solving=false;
+let cfg=copySettings(defaultSettings), runs=null, displayedCfg=null, waiting=null;
+let time=0, selection=null, timer=null, request=0;
 
 function slider(parent,id,label,min,max,step,value,onInput,format){
   const row=document.createElement('label');
@@ -190,23 +190,30 @@ function present(pair,settings,first=false){
   const start=early>=0?early:pair.open.frames.findIndex(frame=>frame.tips.length>0);
   seek(first?start:time);
   for(const id of ['play','restart','time','event','save'])$(id).disabled=false;
-  $('status').textContent=isOpening(settings)?'Opening runs solved with ICeShOT.':'Both views updated.';
+  $('status').textContent=isOpening(settings) && pair.mixed.backend
+    ?'Opening runs solved with ICeShOT.':'Both views updated.';
 }
 const moverKey=s=>[s.seed,s.life,s.interval,s.reach,s.pull].join('/');
 const isOpening=s=>JSON.stringify(s)===JSON.stringify(defaultSettings);
 let reference=null;
 async function opening(){
-  if(!reference)reference=Promise.all(conditions.map(async condition=>{
-    const r=await fetch(condition+'.json'+release);if(!r.ok)throw Error('Could not load opening runs.');
-    const run=await r.json();
-    if(run.frames.length!==ticks+1 || !run.grid)throw Error('Opening runs are being updated.');
-    return run;
-  })).then(([open,mixed])=>({open,mixed})).catch(e=>{reference=null;throw e;});
+  if(!reference){
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),2500);
+    reference=Promise.all(conditions.map(async condition=>{
+      const r=await fetch(condition+'.json'+release,{signal:controller.signal});
+      if(!r.ok)throw Error('Could not load opening runs.');
+      const run=await r.json();
+      if(run.frames.length!==ticks+1 || !run.grid)throw Error('Opening runs are being updated.');
+      return run;
+    })).then(([open,mixed])=>({open,mixed})).catch(error=>{
+      reference=null;throw error;
+    }).finally(()=>clearTimeout(timeout));
+  }
   return reference;
 }
 function cancel(){
   request++;
-  if(solving){worker.terminate();worker=null;solving=false;}
   clearTimeout(waiting);pause();
 }
 function scheduleRun(){
@@ -217,46 +224,28 @@ async function launch(first){
   cancel();
   const token=request,settings=copySettings(cfg);
   $('status').textContent='Recalculating both views…';
-  if(isOpening(settings)){
-    try{
-      const pair=await opening();
-      if(token===request)present(pair,settings,first);
-      return;
-    }catch(e){
+  const progress=async (tick,fill)=>{
+    if(token!==request)throw Error('Superseded run');
+    $('status').textContent=(fill?'Neighbours':'Open space')+' · calculating step '+tick+' of '+ticks;
+    // Yield between batches so slider edits and rendering can proceed.
+    await new Promise(resolve=>setTimeout(resolve,0));
+    if(token!==request)throw Error('Superseded run');
+  };
+  try{
+    if(isOpening(settings)){
+      const pair=await opening().catch(()=>null);
       if(token!==request)return;
+      if(pair){present(pair,settings,first);return;}
     }
-  }
-  const skipOpen=Boolean(runs && moverKey(displayedCfg)===moverKey(settings));
-  if(skipOpen && settings.fill===0){
-    present({open:runs.open,mixed:runs.open},settings,first);
-    return;
-  }
-  worker??=new Worker(new URL('./worker.mjs'+release,import.meta.url),{type:'module'});
-  solving=true;
-  worker.onmessage=({data})=>{
+    const reuseOpen=runs && moverKey(displayedCfg)===moverKey(settings);
+    const open=reuseOpen?runs.open:await simulate(settings,0,undefined,progress);
+    const mixed=settings.fill===0?open:await simulate(settings,settings.fill,undefined,progress);
+    if(token===request)present({open,mixed},settings,first);
+  }catch(error){
     if(token!==request)return;
-    if(data.progress){
-      $('status').textContent=(data.progress.fill?'Neighbours':'Open space')+' · calculating step '+data.progress.tick+' of '+ticks;
-      return;
-    }
-    solving=false;
-    if(data.error){
-      $('status').textContent=data.error+(runs?' The earlier run is still shown.':'');
-      return;
-    }
-    try{
-      present({open:data.open??runs.open,mixed:data.mixed},settings,first);
-    }catch(error){
-      console.error(error);
-      $('status').textContent='The run finished but the preview could not draw. Reload the page to try again.';
-    }
-  };
-  worker.onerror=e=>{
-    if(token!==request)return;
-    solving=false;worker.terminate();worker=null;
-    $('status').textContent='The simulation stopped. '+e.message;
-  };
-  worker.postMessage({cfg:settings,skipOpen});
+    console.error(error);
+    $('status').textContent=error.message+(runs?' The earlier run is still shown.':'');
+  }
 }
 $('save').onclick=()=>{
   if(!displayedCfg)return;

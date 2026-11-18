@@ -161,6 +161,7 @@ export async function simulate(cfg,fill,solve=browserSolve,progress=()=>{}){
     const settled=await allocateStep(cells,[],tick,weights,solve);
     advanceHosts(cells,settled.measurements.centres,cfg.tether);
     weights=settled.weights;
+    if(tick===3)await progress(0,fill);
   }
   const plan=proposals(cfg),started=[],frames=[];
   let path=0,last=origin;
@@ -189,7 +190,7 @@ export async function simulate(cfg,fill,solve=browserSolve,progress=()=>{}){
       raster:encode(solved.labels),areaError:solved.measurements.maxError,detached:solved.measurements.fragmentFraction});
     advanceHosts(cells,solved.measurements.centres,cfg.tether);
     advanceCore(cells[0],tips,solved.measurements.centres[0],cfg);
-    if(tick%12===0)progress(tick,fill);
+    if(tick%4===0)await progress(tick,fill);
   }
   return {frames,material,events:started,occupancy,grid};
 }
