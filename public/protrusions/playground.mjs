@@ -59,16 +59,25 @@ function typeValue(prop,fallback){
   return cfg.overrides[id]?.[prop]??types[id][fallback];
 }
 function editType(prop,value){
-  const id=selectedType(),[shape,,,resistance]=types[id];
-  cfg.overrides[id]??={shape,resistance};
-  cfg.overrides[id][prop]=value;
-  if(!cfg.enabled.includes(id))cfg.enabled=[...cfg.enabled,id].sort((a,b)=>a-b);
-  if(cfg.fill===0)cfg.fill=defaultSettings.fill;
-  sync();scheduleRun();
+  const id=selectedType();
+  cfg.overrides[id]={...cfg.overrides[id],[prop]:value};
+  if(cfg.enabled.includes(id) && cfg.fill>0)scheduleRun();
+  else updateTypeNote();
+}
+function updateTypeNote(){
+  const id=selectedType(),name=hostNames[id];
+  const count=runs?.mixed.material.filter(c=>c.type===id+1).length??0;
+  let note;
+  if(!cfg.enabled.includes(id))note=name+' is outside the mixture. Add it using its button above.';
+  else if(cfg.fill===0)note='Increase occupied area to see '+name+' cells.';
+  else if(!count)note='No '+name+' cells in the displayed patch.';
+  else note=count+' '+name+' '+(count===1?'cell':'cells')+' outlined in the right panel.';
+  $('typeNote').textContent=note;
 }
 slider('typeSettings','resistance','Shape resistance',.55,1.85,.01,
   ()=>typeValue('resistance',3),value=>editType('resistance',value),String);
-$('editType').onchange=sync;
+$('editType').onchange=()=>{sync();render();};
+$('edit').ontoggle=render;
 $('outline').onchange=()=>editType('shape',$('outline').value);
 
 function sync(){
@@ -76,6 +85,7 @@ function sync(){
   typeButtons.forEach((b,i)=>b.setAttribute('aria-pressed',cfg.enabled.includes(i)));
   $('outline').value=typeValue('shape',0);
   $('allTypes').textContent=cfg.enabled.length===10?'Use opening mixture':'Use all ten types';
+  updateTypeNote();
 }
 $('allTypes').onclick=()=>{
   cfg.enabled=cfg.enabled.length===10?defaultSettings.enabled.slice():hostNames.map((_,i)=>i);
@@ -140,7 +150,11 @@ function drawPatch(which){
   const ctx=canvas.getContext('2d');
   const {nx,ny}=run.grid;
   const raster={width:nx,height:ny,labels:decode(frame.raster,nx*ny)};
-  const map=draw(canvas,run,frame,false,{palette,selected:0,newIds:new Set(),noWalls:true,raster});
+  const outlined=new Set();
+  if(which==='mixed' && $('edit').open){
+    for(const [i,cell] of run.material.entries())if(cell.type===selectedType()+1)outlined.add(i);
+  }
+  const map=draw(canvas,run,frame,false,{palette,selected:0,newIds:new Set(),outlined,noWalls:true,raster});
   const point=p=>[map.left+p[0]*map.scale,map.top+p[1]*map.scale];
   const dot=(xy,r,fill,stroke)=>{
     ctx.beginPath();ctx.arc(...point(xy),r,0,Math.PI*2);
@@ -177,6 +191,7 @@ function render(){
   for(const which of conditions)drawPatch(which);
   $('inspect-result').disabled=selection===null;
   $('key').hidden=false;
+  updateTypeNote();
 }
 function present(pair,settings,first=false){
   pause();

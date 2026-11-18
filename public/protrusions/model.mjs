@@ -15,6 +15,7 @@ export const types=[
   ['round',1.55,1.04,1.26], ['fan',1,1.07,.82], ['spindle',1.6,1.18,1.0],
   ['round',1,.61,1.17], ['split',1.08,.98,.82], ['round',1.87,1.25,.95], ['spindle',2.7,.84,1.1]
 ];
+const outlineAspect={round:1.3,spindle:2.35,fork:1.16,fan:1,split:1.08};
 const origin=[2.42,3.21], radius=.32, coreResistance=1.45;
 const bound=(v,low,high)=>Math.min(high,Math.max(low,v));
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -58,8 +59,10 @@ function makeTissue(cfg,fill){
   for(let i=0;i<n && area<W*H*fill/100;i++){
     const {x,y,id}=slots[i],type=enabled[id%enabled.length],t=types[type];
     const override=cfg.overrides?.[type];
-    const shape=override?.shape??t[0],aspect=t[1],size=t[2],k=override?.resistance??t[3];
-    const angle=(rng()-.5)*(shape==='spindle'?1.42:Math.PI);
+    const [baseShape,baseAspect,size,resistance]=t;
+    const shape=override?.shape??baseShape,k=override?.resistance??resistance;
+    const aspect=shape===baseShape?baseAspect:outlineAspect[shape];
+    const angle=(rng()-.5)*(baseShape==='spindle'?1.42:Math.PI);
     const hostArea=size*(1+(.30*(rng()-.5)));
     if(area+hostArea>W*H*fill/100+.35)break;
     const m=metric(angle,k/aspect,k*aspect);

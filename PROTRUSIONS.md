@@ -2,7 +2,7 @@
 
 [Open the notebook](https://mbuze.github.io/iceshot-cell-explorer/protrusions/) or [just the interactive simulation](https://mbuze.github.io/iceshot-cell-explorer/public/protrusions/).
 
-A gold cell makes repeated protrusion attempts in a 9 × 6 patch. The left side has just that cell. On the right, choose which of ten background types to include, how much area the mixture fills, and how strongly it returns towards its starting sites. Open **Edit a cell type** to change individual shape preferences and resistance coefficients. **New attempts** changes the pigment cell's random sequence. **Reshuffle neighbours** changes only the tissue seed. Edits recompute both views when needed.
+A gold cell makes repeated protrusion attempts in a 9 × 6 patch. The left side has just that cell. On the right, choose which of ten background types to include, how much area the mixture fills, and how strongly it returns towards its starting sites. Open **Edit a cell type** to change its outline or shape resistance. The right panel highlights the selected type. Use the type buttons to add or remove types from the mixture. **New attempts** changes the pigment cell's random sequence. **Reshuffle neighbours** changes only the tissue seed. Edits recompute both views when needed.
 
 ## Opening pair
 

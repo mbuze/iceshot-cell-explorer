@@ -24,7 +24,7 @@ def _(mo):
 
 @app.cell
 def _(assets, mo):
-    mo.Html(f'<iframe src="{assets}/protrusions/index.html?v=fast-render-3" title="Protrusion experiment" style="display:block;width:100%;max-width:1160px;height:900px;border:0"></iframe>')
+    mo.Html(f'<iframe src="{assets}/protrusions/index.html?v=cell-editor-4" title="Protrusion experiment" style="display:block;width:100%;max-width:1160px;height:900px;border:0"></iframe>')
     return
 
 

@@ -67,3 +67,5 @@ summary {cursor: pointer}
 @media(max-width: 420px) {
   .parameters {grid-template-columns: 1fr}
 }
+
+.type-note {color: #426455; font-size: 13px; min-height: 1.4em}

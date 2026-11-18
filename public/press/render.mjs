@@ -43,10 +43,11 @@ export function draw(canvas,run,frame,links,style=null) {
       for(let k=0;k<3;k++){
         if(style){
           const fresh=style.newIds.has(i);
-          const edge=style.selected===i?[255,242,201]:fresh?[172,255,217]:tone;
+          const outlined=style.outlined?.has(i);
+          const edge=style.selected===i?[255,242,201]:outlined?[241,255,245]:fresh?[172,255,217]:tone;
           const light=.54+.40*(1-Math.exp(-d/13))+.055*Math.sin(i*2.4);
           const inside=(fresh?[82,174,144][k]:tone[k])*light;
-          const rim=Math.exp(-d/(fresh || i===style.selected?2.7:1.4));
+          const rim=Math.exp(-d/(fresh || outlined || i===style.selected?2.7:1.4));
           im.data[b+k]=inside+rim*(edge[k]*.90+7-inside);
         }else im.data[b+k]=tone[k]*a+rim;
       }

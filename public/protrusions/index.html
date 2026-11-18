@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Protrusions and neighbours</title><link rel="stylesheet" href="style.css">
+<title>Protrusions and neighbours</title><link rel="stylesheet" href="style.css?v=cell-editor-4">
 </head>
 <body>
 <main>
@@ -41,13 +41,14 @@
       <div class="edit-row"><label for="editType">Cell type</label><select id="editType"></select></div>
       <div class="edit-row"><label for="outline">Preferred outline</label><select id="outline"><option value="round">Oval</option><option value="spindle">Spindle</option><option value="fork">Fork</option><option value="fan">Fan</option><option value="split">Split tips</option></select></div>
       <div id="typeSettings"></div>
+      <p id="typeNote" class="type-note"></p>
     </details>
   </section>
 </div>
 <div class="foot"><p id="status" role="status">Loading the two runs…</p><button id="reset">Restore opening settings</button><button id="save" disabled>Save run settings</button></div>
 </main>
 <script type="module">
-  import('./playground.mjs?v=fast-render-3').catch(error => {
+  import('./playground.mjs?v=cell-editor-4').catch(error => {
     console.error(error);
     document.getElementById('status').textContent = 'The simulation could not start. Reload the page to try again.';
   });
