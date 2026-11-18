@@ -39,7 +39,7 @@ def _(assets, mo):
         mo.accordion({
             "Watch a pigment cell reach between its neighbours": mo.Html(f'<video controls playsinline preload="none" style="width:100%;max-width:720px" src="{assets}/migration.mp4"></video>')
         }),
-        mo.md("[Model and measurements](https://github.com/mbuze/iceshot-cell-explorer#the-experiment)")
+        mo.md("[Model and measurements](https://github.com/mbuze/iceshot-cell-explorer#the-experiment) · [Squeeze and release playground](https://mbuze.github.io/iceshot-cell-explorer/squeeze/)")
     ])
     return
 

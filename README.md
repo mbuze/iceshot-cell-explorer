@@ -1,4 +1,8 @@
-# One cell crossing a tissue
+# Cell simulations with ICeShOT
+
+[**Squeeze and release**](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) plays a mixture of up to ten cell types through a press cycle. [Model, solver checks and reproduction](PRESS.md).
+
+## One cell crossing a tissue
 
 [Open the marimo notebook](https://mbuze.github.io/iceshot-cell-explorer/) · [Open just the interactive figure](https://mbuze.github.io/iceshot-cell-explorer/public/figure.html)
 
