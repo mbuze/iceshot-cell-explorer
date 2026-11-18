@@ -1,12 +1,11 @@
-import {defaultSettings,hostNames,hostGeometry,palette,ticks,types} from './model.mjs';
+import {defaultSettings,hostNames,palette,ticks,types} from './model.mjs';
 import {draw} from '../press/render.mjs';
-import {NX,NY} from '../press/grid.mjs';
 import {decode} from './raster.mjs';
 
 const $=id=>document.getElementById(id);
 const controls=[], typeButtons=[], conditions=['open','mixed'];
 let cfg=structuredClone(defaultSettings), runs=null, displayedCfg=null, worker=null, waiting=null;
-let time=0, selection=null, timer=null, request=0;
+let time=0, selection=null, timer=null, request=0, solving=false;
 
 function slider(parent,id,label,min,max,step,value,onInput,format){
   const row=document.createElement('label');
@@ -28,10 +27,10 @@ function setting(parent,id,label,min,max,step,format){
     if(id==='fill' && value>0 && !cfg.enabled.length){cfg.enabled=defaultSettings.enabled.slice();sync();}
   },format);
 }
-setting('protrusionSettings','life','Protrusion lifetime',6,30,1,v=>v+' steps');
-setting('protrusionSettings','interval','Steps between attempts',4,14,1,v=>'about '+v);
+setting('protrusionSettings','life','Protrusion lifetime',4,18,1,v=>v+' steps');
+setting('protrusionSettings','interval','Steps between attempts',2,8,1,v=>'about '+v);
 setting('protrusionSettings','reach','Attempted reach',.85,1.95,.01,v=>v.toFixed(2));
-setting('protrusionSettings','pull','Body pull',.05,.34,.01,v=>v.toFixed(2));
+setting('protrusionSettings','pull','Body pull',.05,.49,.01,v=>v.toFixed(2));
 setting('tissueSettings','fill','Occupied area',0,88,1,v=>v+'%');
 setting('tissueSettings','tether','Hold neighbours in place',0,.25,.005,v=>v===0?'Off':v.toFixed(3));
 
@@ -134,10 +133,10 @@ function describe(run){
 
 function drawPatch(which){
   const run=runs[which],frame=run.frames[time],canvas=$(which);
-  const visible=frame.hostFactor===1?run.material:run.material.map((c,i)=>i?hostGeometry(c,frame.hostFactor):c);
   const ctx=canvas.getContext('2d');
-  const raster=frame.raster?{width:NX,height:NY,labels:decode(frame.raster,NX*NY)}:null;
-  const map=draw(canvas,{material:visible},frame,false,{palette,selected:0,newIds:new Set(),noWalls:true,raster});
+  const {nx,ny}=run.grid;
+  const raster={width:nx,height:ny,labels:decode(frame.raster,nx*ny)};
+  const map=draw(canvas,run,frame,false,{palette,selected:0,newIds:new Set(),noWalls:true,raster,softEdges:true});
   const point=p=>[map.left+p[0]*map.scale,map.top+p[1]*map.scale];
   const dot=(xy,r,fill,stroke)=>{
     ctx.beginPath();ctx.arc(...point(xy),r,0,Math.PI*2);
@@ -164,7 +163,7 @@ function drawPatch(which){
   dot(frame.sites[0],4.25,'#fff1bd','#75472e');
   let note=describe(run);
   if(frame.scale<1 && frame.probes.length)note+=' · Reach shortened by the solver';
-  if(frame.hostFactor<1)note+=' · Neighbour shapes softened for this step';
+  if(frame.detached>.055)note+=' · A neighbour has a split outline';
   $(which+'-outcome').textContent=note;
   $(which+'-occupancy').textContent=which==='open'?'1 cell':(run.material.length-1)+' neighbours · '+Math.round(run.occupancy)+'% filled';
 }
@@ -182,35 +181,39 @@ function present(pair,settings,first=false){
   $('event').replaceChildren(new Option('All protrusions',''),...events.map(e=>new Option('Attempt '+(e.id+1)+' · step '+e.start,String(e.id))));
   if(selection!==null && selection>=events.length)selection=null;
   $('event').value=selection===null?'':String(selection);
+  $('time').max=ticks;
   const early=pair.open.frames.findIndex((frame,i)=>frame.tips.length>=3 && pair.mixed.frames[i].tips.length>=3);
   const start=early>=0?early:pair.open.frames.findIndex(frame=>frame.tips.length>0);
   for(const id of ['play','restart','time','event','save'])$(id).disabled=false;
-  $('status').textContent=pair.mixed.backend?'Opening runs solved with ICeShOT.':'Both views updated.';
+  $('status').textContent=isOpening(settings)?'Opening runs solved with ICeShOT.':'Both views updated.';
   seek(first?start:time);
 }
 const moverKey=s=>[s.seed,s.life,s.interval,s.reach,s.pull].join('/');
+const isOpening=s=>JSON.stringify(s)===JSON.stringify(defaultSettings);
 let reference=null;
 async function opening(){
   if(!reference)reference=Promise.all(conditions.map(async condition=>{
     const r=await fetch(condition+'.json');if(!r.ok)throw Error('Could not load opening runs.');
-    return r.json();
+    const run=await r.json();
+    if(run.frames.length!==ticks+1 || !run.grid)throw Error('Opening runs are being updated.');
+    return run;
   })).then(([open,mixed])=>({open,mixed})).catch(e=>{reference=null;throw e;});
   return reference;
 }
 function cancel(){
   request++;
-  if(worker){worker.terminate();worker=null;}
+  if(solving){worker.terminate();worker=null;solving=false;}
   clearTimeout(waiting);pause();
 }
 function scheduleRun(){
   cancel();$('status').textContent='Recalculating both views…';
-  waiting=setTimeout(()=>launch(false),160);
+  waiting=setTimeout(()=>launch(false),45);
 }
 async function launch(first){
   cancel();
   const token=request,settings=structuredClone(cfg);
   $('status').textContent='Recalculating both views…';
-  if(JSON.stringify(settings)===JSON.stringify(defaultSettings)){
+  if(isOpening(settings)){
     try{
       const pair=await opening();
       if(token===request)present(pair,settings,first);
@@ -219,16 +222,20 @@ async function launch(first){
       if(token!==request)return;
     }
   }
-  // Preserve the unchanged browser run when editing only the tissue.
-  const skipOpen=Boolean(runs && !runs.open.backend && moverKey(displayedCfg)===moverKey(settings));
-  worker=new Worker(new URL('./worker.mjs',import.meta.url),{type:'module'});
+  const skipOpen=Boolean(runs && moverKey(displayedCfg)===moverKey(settings));
+  if(skipOpen && settings.fill===0){
+    present({open:runs.open,mixed:runs.open},settings,first);
+    return;
+  }
+  worker??=new Worker(new URL('./worker.mjs',import.meta.url),{type:'module'});
+  solving=true;
   worker.onmessage=({data})=>{
     if(token!==request)return;
     if(data.progress){
       $('status').textContent=(data.progress.fill?'Neighbours':'Open space')+' · calculating step '+data.progress.tick+' of '+ticks;
       return;
     }
-    worker.terminate();worker=null;
+    solving=false;
     if(data.error){
       $('status').textContent=data.error+(runs?' The earlier run is still shown.':'');
       return;
@@ -236,7 +243,9 @@ async function launch(first){
     present({open:data.open??runs.open,mixed:data.mixed},settings,first);
   };
   worker.onerror=e=>{
-    if(token===request)$('status').textContent='The simulation stopped. '+e.message;
+    if(token!==request)return;
+    solving=false;worker.terminate();worker=null;
+    $('status').textContent='The simulation stopped. '+e.message;
   };
   worker.postMessage({cfg:settings,skipOpen});
 }

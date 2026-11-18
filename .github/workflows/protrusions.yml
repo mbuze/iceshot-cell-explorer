@@ -25,7 +25,8 @@ jobs:
 
           root = "https://mbuze.github.io/iceshot-cell-explorer/"
           assets = ["notebook/protrusions.html", "public/protrusions/index.html",
-                    "public/protrusions/playground.mjs", "public/protrusions/mixed.json"]
+                    "public/protrusions/playground.mjs", "public/protrusions/model.mjs",
+                    "public/press/model.mjs", "public/protrusions/mixed.json"]
           for attempt in range(40):
               try:
                   for name in assets:
@@ -43,13 +44,16 @@ jobs:
 
           open_run = json.loads(Path("public/protrusions/open.json").read_text())
           mixed_run = json.loads(Path("public/protrusions/mixed.json").read_text())
+          last_step = len(open_run["frames"])-1
+          assert last_step == len(mixed_run["frames"])-1 == 64
+          assert all("hostFactor" not in f for f in mixed_run["frames"])
           open_events = open_run["events"]
           mixed_events = mixed_run["events"]
           proposal = ("id", "start", "life", "angle", "length", "bend")
           assert [[p[k] for k in proposal] for p in open_events] == [[p[k] for k in proposal] for p in mixed_events]
           trial = next((a for a,b in zip(open_events,mixed_events)
                         if a["caught"] is not None and b["far"] and b["caught"] is None
-                        and b["start"]+b["life"]<=152), None)
+                        and b["start"]+b["life"]<=last_step), None)
           assert trial is not None
           with sync_playwright() as p:
               browser = p.chromium.launch()
@@ -67,7 +71,7 @@ jobs:
                   f.locator("#event").select_option("")
                   f.locator("#restart").click()
                   f.locator("#play").click()
-                  expect(f.locator("#step")).not_to_have_text("0 / 152")
+                  expect(f.locator("#step")).not_to_have_text(f"0 / {last_step}")
                   f.locator("#play").click()
                   f.locator("#fill").focus()
                   page.keyboard.press("Home")
@@ -79,6 +83,16 @@ jobs:
                   expect(f.locator("#status")).to_have_text("Both views updated.",timeout=60000)
                   expect(f.locator("#allTypes")).to_have_text("Use opening mixture")
                   expect(f.locator(".type-list button[aria-pressed=true]")).to_have_count(10)
+                  before_edit = f.locator("#mixed").evaluate("c=>c.toDataURL()")
+                  f.locator("#edit summary").click()
+                  f.locator("#outline").select_option("fan")
+                  expect(f.locator("#status")).to_have_text("Both views updated.",timeout=8000)
+                  assert f.locator("#mixed").evaluate("c=>c.toDataURL()") != before_edit
+                  f.locator("#fill").focus()
+                  started = time.perf_counter()
+                  page.keyboard.press("End")
+                  expect(f.locator("#status")).to_have_text("Both views updated.",timeout=8000)
+                  print(f"Densest ten-type render updated in {time.perf_counter()-started:.2f} seconds")
                   f.locator("#life").focus()
                   page.keyboard.press("Home")
                   expect(f.locator("#status")).to_have_text("Both views updated.",timeout=60000)

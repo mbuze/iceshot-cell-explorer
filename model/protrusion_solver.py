@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 from branch_cost import native_cost
-from press import WIDTH, HEIGHT, NX, NY
+from press import WIDTH, HEIGHT
 from tissue import LazyTensor, torch
 from vendor.tissue_ot import LBFGSB, OT_solver
 
@@ -24,8 +24,9 @@ def segment_distance(grid, a, b):
 
 def main():
     torch.set_num_threads(1)
-    y, x = torch.meshgrid((torch.arange(NY) + .5) * HEIGHT / NY,
-                         (torch.arange(NX) + .5) * WIDTH / NX, indexing='ij')
+    nx, ny = map(int, sys.argv[1:])
+    y, x = torch.meshgrid((torch.arange(ny) + .5) * HEIGHT / ny,
+                         (torch.arange(nx) + .5) * WIDTH / nx, indexing='ij')
     grid = torch.stack([x.flatten(), y.flatten()], dim=1).contiguous()
     xy = grid.numpy()
     solver = OT_solver()
@@ -46,18 +47,19 @@ def main():
                 probes = cells[0].get('probes', [])
                 if probes:
                     origin = sites[0].numpy()
-                    base = 3*((xy-origin)**2).sum(axis=1)
+                    k = cells[0]["k"]
+                    base = k*((xy-origin)**2).sum(axis=1)
                     active = base.copy()
                     for bx, by, tx, ty in probes:
                         q = np.minimum(segment_distance(xy, origin, [bx, by]),
                                        segment_distance(xy, [bx, by], [tx, ty]))
-                        active = np.minimum(active, .48 + 19.5*q)
+                        active = np.minimum(active, k*(.16 + 6.5*q))
                     flag = torch.zeros((len(cells), 1, 1))
                     flag[0] = 1.
                     cost += LazyTensor(flag) * LazyTensor(torch.from_numpy(
                         (active-base).astype(np.float32))[None, :, None])
                 if not data.get("allocate_only"):
-                    LBFGSB(cost, range(22), weights, gy, a=target, max_epoch=3, tol=.004)
+                    LBFGSB(cost, range(22), weights, gy, a=target, max_epoch=2, tol=.012)
                 state = SimpleNamespace(x=sites, y=grid, f_x=weights, labels=labels)
                 solver.Laguerre_allocation(state, cost)
             raster = labels.numpy().astype(np.uint8)

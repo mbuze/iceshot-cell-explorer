@@ -3,13 +3,13 @@ import {spawn} from 'node:child_process';
 import {writeFile,readFile} from 'node:fs/promises';
 import {createInterface} from 'node:readline';
 import {fileURLToPath} from 'node:url';
-import {defaultSettings,simulate} from '../public/protrusions/model.mjs';
+import {defaultSettings,grid,simulate} from '../public/protrusions/model.mjs';
 
 const [condition,out,config]=process.argv.slice(2);
 if(!['open','mixed'].includes(condition)||!out)throw Error('Usage: node model/protrusions.mjs open|mixed OUTPUT [SETTINGS]');
 const cfg=config?JSON.parse(await readFile(config,'utf8')):defaultSettings;
 const fill=condition==='open'?0:cfg.fill;
-const child=spawn(process.env.ICESHOT_PYTHON||'python3',[fileURLToPath(new URL('./protrusion_solver.py',import.meta.url))],
+const child=spawn(process.env.ICESHOT_PYTHON||'python3',[fileURLToPath(new URL('./protrusion_solver.py',import.meta.url)),String(grid.nx),String(grid.ny)],
   {stdio:['pipe','pipe','inherit'],env:{...process.env,OPENBLAS_NUM_THREADS:'1',OMP_NUM_THREADS:'1'}});
 const lines=createInterface({input:child.stdout})[Symbol.asyncIterator]();
 async function solve(cells,f){

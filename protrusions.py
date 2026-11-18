@@ -33,7 +33,7 @@ def _(mo):
     mo.accordion({"How the cells move": mo.md("""
     At each step the gold cell and its neighbours share space while keeping roughly the same area. A protrusion grows towards a proposed point, holds, then retracts. After a delay, the body moves towards the part of the arm it actually managed to extend. Several tips can pull in different directions.
 
-    When an arm would break a cell outline, the solver tries shortening it. The caption shows when the simulation uses a shorter reach or weakens the shapes of neighbours.
+    The short preview keeps each neighbour’s chosen shape preference. The captions flag a shortened gold arm or a split outline in the allocation.
 
     The opening pair runs through ICeShOT's native solver. Edited settings solve the same allocation in the browser. [Model and measurements](https://github.com/mbuze/iceshot-cell-explorer/blob/main/PROTRUSIONS.md)
     """)})

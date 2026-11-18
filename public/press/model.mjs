@@ -88,9 +88,9 @@ export function allocate(cells,f,width,nx=NX,ny=NY) {
     }
   }
   function paintSegment(i,ax,ay,bx,by){
-    const weight=f[i]-.48;
+    const resistance=cells[i].k, weight=f[i]-.16*resistance;
     if(weight<=0)return;
-    const r=Math.sqrt(weight/19.5),vx=bx-ax,vy=by-ay;
+    const r=Math.sqrt(weight/(6.5*resistance)),vx=bx-ax,vy=by-ay;
     const denom=vx*vx+vy*vy;
     if(denom<=1e-10)return;
     const xMin=Math.max(0,Math.ceil((Math.min(ax,bx)-r-x0)/dx-.5));
@@ -102,7 +102,7 @@ export function allocate(cells,f,width,nx=NX,ny=NY) {
       for(let x=xMin;x<=xMax;x++){
         const u=x0+(x+.5)*dx-ax;
         const t=Math.max(0,Math.min(1,(u*vx+v*vy)/denom));
-        const cost=19.5*((u-t*vx)**2+(v-t*vy)**2)-weight;
+        const cost=6.5*resistance*((u-t*vx)**2+(v-t*vy)**2)-weight;
         const z=y*nx+x;
         if(cost<best[z]){best[z]=cost;labels[z]=i;}
       }
@@ -115,11 +115,11 @@ function countsOf(labels,n) {
   for(const id of labels)if(id!==255)counts[id]++;
   return counts;
 }
-export function balance(cells,f,width) {
-  const pixel=width*H/(NX*NY), momentum=new Float64Array(cells.length);
+export function balance(cells,f,width,{nx=NX,ny=NY,iterations=140,tolerance=.012,meanTolerance=.005}={}) {
+  const pixel=width*H/(nx*ny), momentum=new Float64Array(cells.length);
   let bestError=Infinity, bestF, bestLabels;
-  for(let step=0;step<140;step++){
-    const labels=allocate(cells,f,width),counts=countsOf(labels,cells.length);
+  for(let step=0;step<iterations;step++){
+    const labels=allocate(cells,f,width,nx,ny),counts=countsOf(labels,cells.length);
     let maxError=0, sum=0;
     const gaps=cells.map((c,i)=>{
       const gap=c.area-counts[i]*pixel, err=Math.abs(gap)/c.area;
@@ -127,7 +127,7 @@ export function balance(cells,f,width) {
       return gap;
     });
     if(sum<bestError){bestError=sum;bestF=f.slice();bestLabels=labels;}
-    if(maxError<.012 && sum/cells.length<.005)return labels;
+    if(maxError<tolerance && sum/cells.length<meanTolerance)return labels;
     for(let i=0;i<cells.length;i++){
       momentum[i]=.53*momentum[i]+.78*gaps[i]*cells[i].k/Math.PI;
       f[i]=Math.max(.001,f[i]+momentum[i]);
@@ -137,7 +137,7 @@ export function balance(cells,f,width) {
   bestF.forEach((v,i)=>{f[i]=v;});
   return bestLabels;
 }
-function detachedFractions(labels,sums) {
+function detachedFractions(labels,sums,nx,diagonal) {
   const seen=new Uint8Array(labels.length),stack=new Int32Array(labels.length);
   const largest=new Uint32Array(sums.length);
   for(let z=0;z<labels.length;z++){
@@ -146,25 +146,32 @@ function detachedFractions(labels,sums) {
     let count=0,top=1; stack[0]=z;seen[z]=1;
     while(top){
       const v=stack[--top];count++;
-      const x=v%NX;
-      for(const w of [x>0?v-1:-1,x+1<NX?v+1:-1,v-NX,v+NX]){
-        if(w>=0 && w<labels.length && !seen[w] && labels[w]===id){
-          stack[top++]=w;seen[w]=1;
-        }
+      const x=v%nx;
+      visit(v-nx);visit(v+nx);
+      if(x>0){
+        visit(v-1);
+        if(diagonal){visit(v-nx-1);visit(v+nx-1);}
+      }
+      if(x<nx-1){
+        visit(v+1);
+        if(diagonal){visit(v-nx+1);visit(v+nx+1);}
       }
     }
     largest[id]=Math.max(largest[id],count);
+    function visit(w){
+      if(labels[w]===id && !seen[w]){stack[top++]=w;seen[w]=1;}
+    }
   }
   return sums.map((s,i)=>1-largest[i]/s[0]);
 }
-export function measure(cells,labels,width,inspect=true,minEdges=4) {
+export function measure(cells,labels,width,inspect=true,minEdges=4,{nx=NX,ny=NY,diagonal=false}={}) {
   const n=cells.length, sums=Array.from({length:n},()=>[0,0,0,0,0,0]);
-  const edges=new Uint16Array(n*n), dx=width/NX, dy=H/NY, left=(W-width)/2;
-  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
-    const z=y*NX+x,i=labels[z]; if(i===255)continue;
+  const edges=new Uint16Array(n*n), dx=width/nx, dy=H/ny, left=(W-width)/2;
+  for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){
+    const z=y*nx+x,i=labels[z]; if(i===255)continue;
     const s=sums[i],u=left+(x+.5)*dx,v=(y+.5)*dy;
     s[0]++;s[1]+=u;s[2]+=v;s[3]+=u*u;s[4]+=v*v;s[5]+=u*v;
-    for(const j of [x+1<NX?labels[z+1]:255,y+1<NY?labels[z+NX]:255])
+    for(const j of [x+1<nx?labels[z+1]:255,y+1<ny?labels[z+nx]:255])
       if(j!==255 && j!==i) edges[Math.min(i,j)*n+Math.max(i,j)]++;
   }
   const contacts=[];
@@ -177,7 +184,7 @@ export function measure(cells,labels,width,inspect=true,minEdges=4) {
     centres.push([x,y]);aspect.push(Math.sqrt((xx+yy+d)/Math.max(1e-8,xx+yy-d)));
     sizeError.push(Math.abs(count*dx*dy/cells[i].area-1));
   });
-  const fragments=inspect?detachedFractions(labels,sums):[];
+  const fragments=inspect?detachedFractions(labels,sums,nx,diagonal):[];
   return {centres,aspect,contacts,maxError:Math.max(...sizeError),
     fragmentFraction:fragments.length?Math.max(...fragments):0,fragments};
 }
