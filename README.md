@@ -1,24 +1,38 @@
-# One cell moving through skin
+# One cell crossing a tissue
 
-[Open the comparison](https://mbuze.github.io/iceshot-cell-explorer/) · [Open the interactive marimo notebook](https://mbuze.github.io/iceshot-cell-explorer/notebook/)
+[Open the marimo notebook](https://mbuze.github.io/iceshot-cell-explorer/) · [Open just the interactive figure](https://mbuze.github.io/iceshot-cell-explorer/public/figure.html)
 
-One gold pigment cell follows a prescribed path through 48 surrounding cells. Compare a rounded, spindle-shaped or branched preference while keeping the starting tissue, path and target areas fixed. The ring and dot track one neighbour's initial and current area centroid. Distance is in units of the square root of the average target cell area.
+Follow any cell as a gold cell crosses 48 neighbours. The selected cell has a cream outline and a track from its starting centre. Clicking the open ring rewinds to the first frame. You can toggle the starting borders, all host tracks and full-sheet view. The tracking menu is a keyboard-accessible alternative to clicking the sheet. Within a tissue, switching shape or motion preserves the tracked cell and frame.
 
-The controls replay five ICeShOT runs. The zero-strength run is shared across shapes. The two other amplitudes are 50% and 100% of the chosen elongation or branch reach. All runs extend the shape early and partially retract it late. A rounded preference has no elongation parameter. One seed (17) and an imposed path make this a demonstration of geometry. Biological inference would require measured shapes, tracks and replicates.
+## The experiment
 
-The migration film below the comparison uses an earlier model in which protrusions guide the body. It was inspired by the live imaging of melanoblasts in [Li, Mort and colleagues (2011)](https://pmc.ncbi.nlm.nih.gov/articles/PMC3464460/). The geometry uses the L-BFGS solver and Laguerre allocation from [ICeShOT, by Antoine Diez and Jean Feydy](https://github.com/antoinediez/ICeShOT). The upstream MIT licence is in model/vendor/LICENCE.txt.
+For each tissue we computed a rounded gold cell and two amplitudes each for spindle and branched shapes. Each of the five settings was run twice with an identical initial allocation. In one run the gold cell's anchor travels 3.5 nominal widths. In its control, the anchor stays fixed and the same shape-change schedule plays out. The surrounding cells relax in both. Comparing displacements in those two runs separates the effect of prescribed travel from background relaxation and reshaping. A nominal width is the square root of mean area over all 49 cells.
 
-## Run
+- **Even-sized mosaic.** Jittered sites and moderately varying target areas.
+- **Aligned, elongated cells.** Staggered rows with a shared horizontal elongation preference. The background quadratic cost weights the squared horizontal and vertical offsets by 1/2.8 and 2.8.
+- **Mixed cell sizes.** More initial positional jitter and a broader distribution of target areas.
 
-Serve the folder with `python -m http.server` and open the printed address. The comparison page uses plain browser controls. The notebook uses marimo and downloads its browser Python runtime on first use. For the native notebook, install marimo 0.23.5 and run `marimo run explorer.py` from this directory.
+The gold cell's target area is 2.15 times the mean host area. The host sites take a 0.52 step towards their new centroids plus a 0.003 restoring step towards their initial sites after each solve. Borders and displacement emerge from the allocated territories and relaxation rule. The model prescribes the gold cell’s path and supplies no estimate of tissue forces. These settings were chosen to make rearrangements easy to inspect.
 
-To repeat the calculations on Linux with Python 3.12 and a C++ compiler with OpenMP:
+## What the selected numbers mean
+
+In the mixed-size rounded run, background cell 9 finished 1.20 widths from its starting centre, versus 0.03 in the matched stationary control. At the final frame the crossing tissue had lost 19 original host–host contacts and gained 17. The held control lost 4 and gained 8. These counts compare contact sets with frame zero. A pair counts when its interface spans at least four raster edges. The viewer initially selects the host with the largest excursion in the chosen crossing run. This illustrates the largest movements in this one patch. Click another host to see how the response varies.
+
+## Reproduce
+
+Native notebook: install marimo 0.23.5 and run `marimo run explorer.py`. For the exported presentation, serve this directory with `python -m http.server`; the notebook downloads its browser Python runtime on first use. The linked standalone figure uses the same files and controls. The browser replays precalculated runs.
+
+To repeat all 30 CPU solves on Linux (Python 3.12, a C++ compiler and OpenMP):
 
 ```sh
 python -m pip install -r model/requirements.txt
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python model/build.py
+for tissue in mosaic aligned mixed; do
+    OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python model/build.py --tissue "$tissue"
+done
 ```
 
-The 196 × 196 raster has 61 recorded frames after 10 settling steps. Each host site relaxes towards its new centroid with a weak spring to its original position. The gold cell's preferred transport cost changes with time. The solver assigns every pixel to a cell while approximating the prescribed areas. If a trial splits the gold cell, the code shortens the attempted extension and solves again. Rendering smooths the pixel boundaries. Measurements use the original labels. The files in public include image sheets, measured displacements, run times and area errors. Timings include the stepping loop and exclude rendering.
+Seed 17, 168 × 168 raster, 22 settling steps and 49 recorded frames. The solver retries with a shorter reach when the gold cell would split. Each compressed JSON file contains smoothed outlines, centroids from the original raster, contact counts, area errors, accepted strengths and elapsed solve time. All ten runs within each tissue share the same first frame. The largest individual area error across the experiment was 7.82%.
 
-To update the browser notebook after editing explorer.py, run `marimo export html-wasm explorer.py -o notebook --mode run --no-show-code --force`. The hosted notebook reads the common image sheets from ../public. GitHub Pages serves the root of the gh-pages branch.
+The geometry uses the [ICeShOT L-BFGS solver and Laguerre allocation by Antoine Diez and Jean Feydy](https://github.com/antoinediez/ICeShOT). The upstream MIT licence is in model/vendor/LICENCE.txt. The separate [migration film](public/migration.mp4) uses protrusion-driven movement inspired by [Li, Mort and colleagues (2011)](https://pmc.ncbi.nlm.nih.gov/articles/PMC3464460/).
+
+Re-export after changing the notebook using `marimo export html-wasm explorer.py -o notebook --mode run --no-show-code --force`. Pages serves the root of the gh-pages branch.

@@ -1,13 +1,13 @@
 import marimo
 
 __generated_with = "0.23.5"
-app = marimo.App(width="medium", app_title="One cell moving through skin")
+app = marimo.App(width="full", app_title="One cell crossing a tissue")
 
 
 @app.cell
 def _():
-    import sys
     import marimo as mo
+    import sys
     assets = "../public" if sys.platform == "emscripten" else "public"
     return assets, mo
 
@@ -15,40 +15,35 @@ def _():
 @app.cell
 def _(mo):
     mo.md("""
-    # Does the moving cell push its neighbours?
-    The gold cell takes the same route through a sheet of 48 skin cells in each run.
-    The little ring marks where one neighbour started. The dot follows its centre.
-    Switch the gold cell’s preferred shape and watch that neighbour.
+    # One cell crossing a tissue
+
+    Pick a background cell and watch where it goes as the gold cell passes.
+    Switch to **Stay put** to see the same tissue with the gold cell held in place.
     """)
     return
 
 
 @app.cell
-def _(mo):
-    shape = mo.ui.radio(["Rounded", "Spindle", "Branched"], value="Branched", inline=True, label="Preferred shape")
-    extent = mo.ui.slider(0, 100, step=50, value=100, show_value=True, label="Maximum shape change (%)")
-    frame = mo.ui.slider(0, 60, value=30, show_value=True, label="Frame")
-    mo.vstack([shape, extent, frame])
-    return extent, frame, shape
-
-
-@app.cell
-def _(assets, extent, frame, mo, shape):
-    _k = frame.value
-    _kind = shape.value.lower()
-    _key = "rounded-0" if _kind == "rounded" or extent.value == 0 else f"{_kind}-{extent.value}"
-    _x, _y = (_k % 8)*100/7, (_k // 8)*100/7
-    mo.Html(f'<div role="img" aria-label="{shape.value} cell at frame {_k}" style="width:100%;max-width:650px;aspect-ratio:3/2;background-image:url({assets}/{_key}.webp);background-size:800% 800%;background-position:{_x}% {_y}%"></div>')
+def _(assets, mo):
+    mo.Html(f'<iframe src="{assets}/figure.html" title="Interactive tissue experiment" style="width:100%;max-width:1100px;height:650px;border:0;display:block"></iframe>')
     return
 
 
 @app.cell
-def _(mo):
-    mo.md("""
-    **What changes?** The model gives the gold cell a preference for a round body, a long thin body, or a body with branches. ICeShOT shares space between the cells while keeping each close to its target area. The neighbours can move and deform. With the rounded preference, the shape-change slider has no effect.
+def _(assets, mo):
+    mo.accordion({
+        "What do the borders and tracks show?": mo.md("""
+        The solid borders show which part of the sheet belongs to each cell. The dashed starting borders stay fixed so you can see a boundary move or a pair of neighbours separate. Each track follows the centre of the cell’s **area**. The open ring marks the selected cell’s starting centre. One cell width is the square root of the average cell area.
 
-    These controls replay five saved simulations. Each uses the same starting tissue and a prescribed path for the gold cell. This lets us ask how shape affects the surrounding tissue. To see the earlier experiment in which protrusions guide the cell’s motion, open the [migration film](https://mbuze.github.io/iceshot-cell-explorer/public/migration.mp4).
-    """)
+        The contact count compares the current frame with the first frame. Two background cells count as touching when at least four raster edges meet. A contact can disappear and later return. The initial selection highlights the background cell with the largest excursion in the crossing run. You can select any of the 49 cells.
+        """),
+        "What did we change in the simulation?": mo.md("""
+        The gold cell has just over twice the average background cell area. We prescribe a path 3.5 cell widths across the tissue. The background cells can change shape and shift their centres, with a weak pull towards their starting positions. ICeShOT allocates space to every cell at each step. This gives displacement and changes of neighbours. It does not measure a pushing force.
+
+        The three sheets have different arrangements or size distributions. The aligned sheet also favours horizontal elongation. The controls load 30 precomputed runs. In each matched **Stay put** run the gold cell’s anchor stays still while its shape preference follows the same schedule.
+        """),
+        "Earlier migration film": mo.Html(f'<video controls playsinline preload="none" style="width:100%;max-width:720px" src="{assets}/migration.mp4"></video>')
+    })
     return
 
 

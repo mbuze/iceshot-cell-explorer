@@ -25,24 +25,43 @@ jobs:
               page.on("pageerror", lambda e: print("Browser error:", e, flush=True))
               page.on("requestfailed", lambda r: print("Request failed:", r.url, r.failure, flush=True))
               page.goto(url)
-              page.get_by_text("0.13 widths from start").wait_for()
-              page.get_by_label("Right-hand cell").select_option("Spindle")
-              page.get_by_text("0.15 widths from start").wait_for()
-              page.locator("#frame").focus()
-              page.keyboard.press("Home")
-              assert page.locator("#distanceB").inner_text() == "0.00 widths from start"
-              page.get_by_role("button", name="Play").click()
-              page.wait_for_function("document.querySelector('#frame').value > 1")
-              page.get_by_role("button", name="Pause").click()
-              page.get_by_role("link", name="Open marimo notebook").click()
               try:
-                  image = page.get_by_role("img", name="Branched cell at frame 30")
-                  image.wait_for(timeout=150000)
-                  page.get_by_text("Spindle", exact=True).click()
-                  changed = page.get_by_role("img", name="Spindle cell at frame 30")
-                  changed.wait_for()
-                  asset = changed.evaluate("(el) => getComputedStyle(el).backgroundImage.slice(5,-2)")
-                  assert page.evaluate("""async url => {const i=new Image(); i.src=url; await i.decode(); return i.naturalWidth}""",asset) == 3456
+                  frame = page.frame_locator('iframe[title="Interactive tissue experiment"]')
+                  frame.locator('.cell[data-id="0"]').wait_for(timeout=150000)
+                  frame.get_by_label("Branched",exact=True).check()
+                  frame.locator("#play:enabled").wait_for()
+                  frame.get_by_label("Rounded",exact=True).check()
+                  frame.locator("#play:enabled").wait_for()
+                  assert frame.locator("#strength").is_disabled()
+                  frame.locator(".cell[data-id='0']").click()
+                  assert frame.locator("#tracked").input_value() == "0"
+                  frame.get_by_label("Track a cell").select_option("9")
+                  frame.get_by_label("Starting centre").uncheck()
+                  assert frame.locator("[data-start]").count() == 0
+                  frame.get_by_label("Starting centre").check()
+                  frame.locator("[data-start]").click()
+                  assert frame.locator("#frame").input_value() == "0"
+                  frame.locator("#frame").focus()
+                  page.keyboard.press("End")
+                  assert frame.locator("#distance").inner_text() == "1.20 cell widths"
+                  frame.get_by_label("Stay put").check()
+                  assert frame.locator("#distance").inner_text() == "0.03 cell widths"
+                  frame.get_by_label("Starting borders").check()
+                  frame.get_by_label("Full sheet").check()
+                  assert frame.locator("#field").get_attribute("viewBox") == "0 0 700 700"
+                  frame.get_by_label("Tissue",exact=True).select_option("aligned")
+                  frame.locator("#play:enabled").wait_for()
+                  frame.get_by_label("Spindle",exact=True).check()
+                  frame.locator("#play:enabled").wait_for()
+                  frame.get_by_label("Shape change").select_option("50")
+                  frame.locator("#play:enabled").wait_for()
+                  frame.get_by_role("button",name="Play",exact=True).click()
+                  frame.get_by_role("button",name="Pause").click()
+                  assert frame.locator(".cell").count() == 49
+                  page.set_viewport_size({"width":390,"height":844})
+                  frame.get_by_label("Tissue",exact=True).select_option("mosaic")
+                  frame.locator("#play:enabled").wait_for()
+                  assert frame.locator("main").evaluate("e => e.scrollWidth <= window.innerWidth")
               finally:
                   print(page.locator("body").inner_text()[:2000], flush=True)
                   page.screenshot(path="presentation.png")

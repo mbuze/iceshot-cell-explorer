@@ -5,7 +5,7 @@ from scipy import ndimage
 from patch import Patch
 
 KINDS = ["Rounded", "Spindle", "Branched"]
-STEPS = 60
+STEPS = 48
 
 
 def smooth(x):
@@ -40,19 +40,19 @@ def shape_cost(patch, kind, t, strength):
     return 7*cost
 
 
-def simulate(kind, amplitude=1.0):
-    patch=Patch(17,196)
+def simulate(kind, amplitude, tissue, travel):
+    patch=Patch(17,168,tissue)
     start=patch.x[0].numpy().copy()
     frames=[]
     coords=[]
     errors=[]
     strengths=[]
-    for k in range(-10, STEPS+1):
+    for k in range(-22, STEPS+1):
         t=max(0,k)/STEPS
         shift=smooth((t-.1)/.79)
-        patch.x[0]=torch.tensor(start+[1.28*shift, .18*np.sin(np.pi*shift)])
+        patch.x[0]=torch.tensor(start+[3.5*travel*shift, .35*travel*np.sin(np.pi*shift)])
         reach=smooth(t/.28)*(1-.80*smooth((t-.74)/.26))
-        for scale in (1.,.94,.85,.70,.50,0.):
+        for scale in (1.,.88,.68,.40,0.):
             lab,centres,err=patch.allocate(shape_cost(patch,kind,t,scale*reach*amplitude))
             if ndimage.label(lab==0)[1]==1:
                 break
