@@ -1,0 +1,54 @@
+name: Check published presentation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/presentation.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - run: python -m pip install playwright
+      - run: python -m playwright install chromium --with-deps
+      - name: Exercise the web controls and the browser notebook
+        shell: python
+        run: |
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          url = "https://mbuze.github.io/iceshot-cell-explorer/"
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page()
+              page.on("pageerror", lambda e: print("Browser error:", e, flush=True))
+              page.on("requestfailed", lambda r: print("Request failed:", r.url, r.failure, flush=True))
+              page.goto(url)
+              page.get_by_text("0.13 widths from start").wait_for()
+              page.get_by_label("Right-hand cell").select_option("Spindle")
+              page.get_by_text("0.15 widths from start").wait_for()
+              page.locator("#frame").focus()
+              page.keyboard.press("Home")
+              assert page.locator("#distanceB").inner_text() == "0.00 widths from start"
+              page.get_by_role("button", name="Play").click()
+              page.wait_for_function("document.querySelector('#frame').value > 1")
+              page.get_by_role("button", name="Pause").click()
+              page.get_by_role("link", name="Open marimo notebook").click()
+              try:
+                  image = page.get_by_role("img", name="Branched cell at frame 30")
+                  image.wait_for(timeout=150000)
+                  page.get_by_text("Spindle", exact=True).click()
+                  changed = page.get_by_role("img", name="Spindle cell at frame 30")
+                  changed.wait_for()
+                  asset = changed.evaluate("(el) => getComputedStyle(el).backgroundImage.slice(5,-2)")
+                  assert page.evaluate("""async url => {const i=new Image(); i.src=url; await i.decode(); return i.naturalWidth}""",asset) == 3456
+              finally:
+                  print(page.locator("body").inner_text()[:2000], flush=True)
+                  page.screenshot(path="presentation.png")
+                  browser.close()
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: presentation
+          path: presentation.png
