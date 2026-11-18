@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.23.5"
-app = marimo.App(width="full", app_title="Squeeze and release")
+app = marimo.App(width="full", app_title="How far can a cell reach?")
 
 
 @app.cell
@@ -15,34 +15,31 @@ def _():
 @app.cell
 def _(mo):
     mo.md("""
-    # Squeeze and release
+    # How far can a cell reach?
 
-    Two walls close on a mixture of cells, pause, and open again. Which cells still touch when the walls return? Try **Gentle** and **Strong** on the same packing, then turn on **Compare previous run**.
+    Drag **Arm length**. The gold cells keep their area as their arms extend between neighbours.
+    Switch to **Round control** to see the same tissue at the same wall spacing.
     """)
     return
 
 
 @app.cell
-def _(mo,assets):
-    mo.Html(f'<iframe src="{assets}/press/index.html" title="Cell squeeze playground" style="display:block;width:100%;max-width:1180px;height:800px;border:0"></iframe>')
+def _(mo, assets):
+    mo.Html(f'<iframe src="{assets}/press/index.html" title="Cell shape playground" style="display:block;width:100%;max-width:1120px;height:750px;border:0"></iframe>')
     return
 
 
 @app.cell
 def _(mo):
-    mo.accordion({"How the cells move": mo.md("""
-    Each cell keeps roughly the same area. The walls move inwards and reduce the empty space.
-    Cells can deform and shift their centres. On release, cells can round up wherever there is room.
-    A pair counts as touching when its shared edge spans at least four grid edges.
+    mo.accordion({"What determines the outline?": mo.md("""
+    The slider changes where a gold cell prefers to extend. Its neighbours compete for the
+    same space. The model solves for the cell boundaries and lets the centres move.
+    Mint outlines mark cells that touch the selected gold cell only when it has arms.
+    The two small silhouettes are drawn at the same scale. Span is the larger of the outline’s width and height.
 
-    Select a colour to edit that cell type. **Run same packing** keeps the starting sites and orientations.
-    Editing the mixture changes how the cells settle around those sites. Relative areas are scaled so the
-    whole population fills the percentage you chose. Shape resistance is a model parameter. The small
-    drawing shows its effect on an isolated cell under a fixed push.
-
-    The three preset runs for the original mixture were calculated with the ICeShOT CPU solver.
-    Edited settings solve the same area-allocation problem in the browser.
-    [Model and reproducibility notes](https://github.com/mbuze/iceshot-cell-explorer/blob/main/PRESS.md).
+    Each setting starts from the same packing. The shapes are imposed preferences;
+    contact and displacement are outcomes. This is a geometry experiment.
+    [Simulation details](https://github.com/mbuze/iceshot-cell-explorer/blob/main/PRESS.md)
     """)})
     return
 

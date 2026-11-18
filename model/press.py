@@ -9,13 +9,14 @@ from types import SimpleNamespace
 import numpy as np
 from scipy import ndimage
 from tissue import LazyTensor, torch
+from branch_cost import advance,native_cost
 from vendor.tissue_ot import LBFGSB, OT_solver
 
 WIDTH, HEIGHT = 9., 6.
 NX, NY = 168, 112
 
 
-def measurements(labels, grid, areas, width):
+def measurements(labels, grid, areas, width, min_edges=4):
     n = len(areas)
     ids = labels.ravel()
     valid = ids < n
@@ -41,7 +42,7 @@ def measurements(labels, grid, areas, width):
         edges += np.bincount(key,minlength=n*n)
     error = np.max(np.abs(count*width*HEIGHT/(NX*NY)/areas-1))
     return dict(centres=centres.round(6).tolist(), aspect=np.round(aspect,6).tolist(),
-                contacts=np.flatnonzero(edges>=4).tolist(), maxError=round(float(error),6),
+                contacts=np.flatnonzero(edges>=min_edges).tolist(), maxError=round(float(error),6),
                 fragmentFraction=round(float(largest_fragment),6))
 
 
@@ -52,6 +53,8 @@ def run(spec):
     coeff = torch.tensor([[c['xx'],2*c['xy'],c['yy']] for c in material])
     f = torch.tensor([c['area']*c['k']/np.pi for c in material]+[0.],dtype=torch.float32)
     y, x = torch.meshgrid((torch.arange(NY)+.5)/NY,(torch.arange(NX)+.5)/NX,indexing='ij')
+    arms = [c.get('arms',[]) for c in material]
+    matrices = np.array([[c['xx'],c['xy'],c['yy']] for c in material])
     tensor_coeff = LazyTensor(coeff[:,None,:])
     solver = OT_solver()
     frames = []
@@ -65,10 +68,19 @@ def run(spec):
         cost = ((u*u).concat(u*v).concat(v*v)*tensor_coeff).sum(-1)
         fraction = area/(width*HEIGHT)
         targets = torch.tensor(np.r_[fraction,1-fraction.sum()],dtype=torch.float32)
-        LBFGSB(cost,range(22),f,g_y,a=targets,max_epoch=3,tol=.004)
-        state = SimpleNamespace(x=sites, y=grid, f_x=f, labels=labels)
-        solver.Laguerre_allocation(state,cost)
-        mask = labels.numpy().astype(int).reshape(NY,NX)
+        previous=f.clone()
+        attempts=spec.get('attempts',[dict(scale=1,arms=arms)])
+        for attempt in attempts:
+            arms=attempt['arms']
+            effective_cost=native_cost(grid,sites,matrices,arms) if any(arms) else cost
+            f.copy_(previous)
+            LBFGSB(effective_cost,range(22),f,g_y,a=targets,max_epoch=3,tol=.004)
+            state=SimpleNamespace(x=sites,y=grid,f_x=f,labels=labels)
+            solver.Laguerre_allocation(state,effective_cost)
+            mask=labels.numpy().astype(int).reshape(NY,NX)
+            if 'attempts' not in spec: break
+            check=measurements(mask,grid,area,width)
+            if check['fragmentFraction']<=.015 and check['maxError']<=.06: break
         if entry is None:
             keep = mask.ravel()<len(area)
             ids = mask.ravel()[keep]
@@ -76,9 +88,12 @@ def run(spec):
             centres = np.stack([np.bincount(ids,weights=v)/n for v in grid.numpy()[keep].T],axis=1)
         else:
             m = measurements(mask,grid,area,width)
-            frames.append(dict(**entry,**m,sites=sites.numpy().round(7).tolist(),
+            frames.append(dict(**entry,**m,armScale=attempt['scale'],sites=sites.numpy().round(7).tolist(),
                                f=f[:-1].numpy().round(7).tolist()))
             centres = np.array(m['centres'])
+        if any(arms):
+            advance(sites.numpy(),grid.numpy(),mask,matrices,arms,centres,[.17]*len(material))
+            continue
         offset = torch.as_tensor(centres,dtype=sites.dtype)-sites
         xx,xy2,yy = coeff.T
         du,dv = offset.T

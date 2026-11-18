@@ -1,28 +1,23 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Squeeze and release</title>
-<link rel="stylesheet" href="press.css"></head><body><main>
-<header id="solo" hidden><h1>Squeeze and release</h1><p>Press a mixture of cells between two walls. When the walls open again, do the same cells still touch?</p></header>
-<div class="lab">
-<section class="chamber">
-<div class="row top"><h2>Chamber</h2><span id="phase">Loading packing…</span></div>
-<canvas id="field" width="720" height="464" aria-label="Cross-section of the simulated chamber between two vertical pistons"></canvas>
-<div class="playback"><button id="play" disabled>Play</button><button id="rewind" title="Return to the first frame" disabled>Start</button><input id="frame" type="range" value="0" min="0" max="1" aria-label="Frame" disabled><output id="time"></output></div>
-<div class="results"><div><strong id="fillNow">—</strong><span>Chamber filled</span></div><div><strong id="lost">—</strong><span>Starting contacts lost</span></div><div><strong id="gained">—</strong><span>New contacts</span></div></div>
-<div class="row toggles"><label><input id="links" type="checkbox"> Mark changed contacts</label><label id="compareLabel" hidden><input id="compare" type="checkbox"> Compare previous run</label></div>
-<p id="legend" class="note" hidden>Solid cream lines join new neighbours. Dashed pink lines join cells that have separated.</p>
-<div id="comparison" hidden><div class="row"><h3>Previous run</h3><span id="oldValue"></span></div><canvas id="oldField" width="540" height="348" aria-label="Previous run at the same cycle phase"></canvas><p class="note" id="oldSummary"></p></div>
-<p id="shapeStat" class="note"></p><p id="runInfo" class="note" aria-live="polite"></p>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>How far can a cell reach?</title><link rel="stylesheet" href="reach.css"></head>
+<body><main><header id="solo" hidden><h1>How far can a cell reach?</h1></header>
+<div class="bench">
+<section class="field">
+<div class="bar"><div class="switch" aria-label="Tissue view"><button id="current" aria-pressed="true">Shaped cells</button><button id="round" aria-pressed="false">Round control</button></div><button id="reset">Reset</button></div>
+<canvas id="tissue" width="840" height="548" aria-label="Cell territories between the walls. Select a gold cell to inspect it."></canvas>
+<div class="caption"><label><input id="highlight" type="checkbox" checked> Outline new neighbours</label><span id="state" role="status">Loading tissue…</span></div>
 </section>
-<section class="controls">
-<h2>The press</h2>
-<div class="presets" aria-label="Squeeze presets"><button data-squeeze="0">No squeeze</button><button data-squeeze="22">Gentle</button><button data-squeeze="83">Strong</button></div>
-<div id="pressInputs"></div>
-<div class="row typeHead"><h2>Cell mixture</h2><button id="all" class="light">Use all ten</button></div>
-<div id="types" role="group" aria-label="Choose a cell type to edit"></div>
-<div class="row sampleTitle"><h3 id="materialName"></h3><span class="note" id="population"></span></div>
-<div id="materialInputs"></div>
-<div class="sample"><svg id="sample" viewBox="0 0 154 80" aria-label="One isolated cell pressed against a wall by a fixed load"></svg><p>One cell under the same sideways push. The dotted line shows its unloaded shape.</p></div>
-<div class="actions"><button id="run" class="primary">Run same packing</button><button id="new">New packing</button></div>
-<span role="status" id="status"></span><button id="save" class="light">Save run settings</button>
+<section class="controls" aria-label="Shape and tissue controls">
+<h2>Gold cells</h2><div class="shapes" role="group" aria-label="Preferred shape"><button data-shape="fork">Fork</button><button data-shape="fan">Fan</button><button data-shape="spindle">Spindle</button></div>
+<label class="knob" for="reach"><span>Arm length</span><output id="reachValue"></output><input id="reach" type="range" min="0" max="100" step="1" value="80"></label>
+<div class="ends"><span>Round</span><span>Fully extended</span></div><button id="sweep">Sweep arm length</button>
+<h2>Surrounding tissue</h2>
+<label class="knob" for="press"><span>Wall compression</span><output id="pressValue"></output><input id="press" type="range" min="0" max="95" step="1" value="36"></label>
+<label class="knob" for="stretch"><span>Background elongation</span><output id="stretchValue"></output><input id="stretch" type="range" min="1" max="2.8" step=".05" value="1.35"></label>
+<p id="limit"></p>
 </section></div>
-</main><script type="module" src="press.mjs"></script></body></html>
+<section class="comparison"><div><h2>One cell, same target area</h2><label class="cellpick">Follow <select id="cell"><option value="7">upper left gold cell</option><option value="10">upper right gold cell</option><option value="21" selected>lower gold cell</option></select></label></div>
+<figure><canvas id="before" width="160" height="100"></canvas><figcaption>Round control</figcaption></figure><figure><canvas id="after" width="160" height="100"></canvas><figcaption>Current shape</figcaption></figure>
+<p id="result" aria-live="polite"></p></section>
+<p class="footer"><a href="cycle.html" target="_top">Open the ten-type squeeze-and-release experiment →</a></p>
+</main><script type="module" src="reach.mjs"></script></body></html>

@@ -1,11 +1,16 @@
+import {armMetrics} from './arms.mjs';
 import {W,H,allocate,colours} from './model.mjs';
 const rgb = colours.map(c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)));
-export function draw(canvas,run,frame,links) {
+export function draw(canvas,run,frame,links,style=null) {
   const ctx=canvas.getContext('2d'), cw=canvas.width, ch=canvas.height;
   const scale=(cw-28)/W, width=frame.width;
   const left=(cw-width*scale)/2, top=(ch-H*scale)/2;
   const nx=Math.round(width*scale), ny=Math.round(H*scale);
   const cells=run.material.map((c,i)=>({...c,x:frame.sites[i][0],y:frame.sites[i][1]}));
+  if(frame.armScale<1)for(const c of cells){
+    const t=run.cfg.types[c.type];
+    c.arms=armMetrics(t.shape||'fork',c.angle,c.k,(t.reach||0)*frame.armScale/100);
+  }
   const mask=allocate(cells,frame.f,width,nx,ny);
   const im=ctx.createImageData(nx,ny), depth=new Float32Array(mask.length).fill(32);
   // Distance to the visible outline controls edge shading only.
@@ -22,10 +27,16 @@ export function draw(canvas,run,frame,links) {
     if(i===255){
       im.data[b]=21;im.data[b+1]=42;im.data[b+2]=48;
     }else{
-      const tone=rgb[cells[i].type], d=depth[z]*720/cw;
+      const tone=style?style.palette[cells[i].type]:rgb[cells[i].type], d=depth[z]*720/cw;
       const a=.72+.24*Math.min(1,d/17)+.035*Math.sin(17*i);
       const rim=43*Math.max(0,1-d/2);
-      for(let k=0;k<3;k++)im.data[b+k]=tone[k]*a+rim;
+      for(let k=0;k<3;k++){
+        if(style){
+          const edge=style.selected===i?[255,242,201]:style.newIds.has(i)?[135,255,199]:tone;
+          const light=.61+.30*(1-Math.exp(-d/10))+.08*Math.sin(i*2.4);
+          im.data[b+k]=tone[k]*light+Math.exp(-d/1.45)*(edge[k]*.83+10-tone[k]*light);
+        }else im.data[b+k]=tone[k]*a+rim;
+      }
     }
     im.data[b+3]=255;
   }
@@ -35,7 +46,7 @@ export function draw(canvas,run,frame,links) {
   ctx.putImageData(im,Math.round(left),Math.round(top));
   ctx.fillStyle='#b8c6b7';
   for(const x of [left-4,left+nx]) ctx.fillRect(Math.round(x),Math.round(top),4,ny);
-  if(!links)return;
+  if(!links)return {mask,nx,ny,left:Math.round(left),top:Math.round(top),scale};
   const start=new Set(run.frames[0].contacts),now=new Set(frame.contacts),n=cells.length;
   function segment(pair,lost){
     const a=frame.centres[Math.floor(pair/n)],b=frame.centres[pair%n];

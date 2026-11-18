@@ -1,6 +1,25 @@
-# Squeeze and release
+# How far can a cell reach?
 
-[Open the notebook](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) · [Open the chamber on its own](https://mbuze.github.io/iceshot-cell-explorer/public/press/)
+[Open the live shape experiment](https://mbuze.github.io/iceshot-cell-explorer/squeeze/). Three gold cells sit among 27 neighbours with 63% initial area occupancy. Dragging a slider reruns the allocation and motion from the same settled packing. No run button or camera movement. A fork has three arms, a fan five, and a spindle two opposing arms. A cell can change whom it touches while keeping its target area. Compare with the zero-arm control at identical wall spacing and background elongation.
+
+The cost at a point is the minimum of a quadratic core and the costs of the permitted arms. In local axial/transverse coordinates (*z*, *b*) an arm offers cost *p z² + q (b − h z²)²* for *z* ≥ 0. The curvature *h*, length and width specify its preferred shape. At each step the fixed-area OT allocation decides which territory it actually gets. Each site follows the area-averaged gradient of the winning cost in its territory. No centroid paths are prescribed. This extension is a geometric hypothesis.
+
+The starting sites are jittered with seed 17 and relaxed for 80 steps. Three interior sites are marked gold. From this common start the requested arm reach, wall position and background elongation ramp over 24 steps, followed by 10 settling steps. If more than 0.8% of a territory detaches on the 168 × 112 grid, or its area error exceeds 4%, the model retries with shorter arms and, if needed, less background elongation. Effective settings appear below the sliders when limited. In this experiment a contact spans at least five shared raster edges. The two silhouettes show the selected territory at the same scale; the control has identical cell areas and site mobilities. The mint outlines identify additional neighbours relative to that control.
+
+The opening view and its control were run with native ICeShOT. In that pair the lower gold cell's span changed from 1.82 to 3.16 model units and its neighbours from one to four. Edits run the same cost and relaxation rules in a browser worker with a different dual optimiser. Fine contact counts may depend on grid resolution. Reproduce either opening view from the repository root:
+
+```sh
+node model/reach-spec.mjs > /tmp/fork-spec.json
+python model/reach.py /tmp/fork-spec.json /tmp/fork-native.json
+node model/reach-spec.mjs '{"reach":0}' > /tmp/round-spec.json
+python model/reach.py /tmp/round-spec.json /tmp/round-native.json
+```
+
+## Squeeze and release
+
+[Open the notebook](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) · [Open the chamber on its own](https://mbuze.github.io/iceshot-cell-explorer/public/press/cycle.html)
+
+The ten-type mixer also supports arms on each material. Its sliders update the displayed phase automatically. When several types have long arms, the solver can shorten their common reach to meet the connectivity and area tolerances below. The phase label reports this reduction.
 
 The walls move, the cells respond. Thirty cells and the intervening empty space occupy a rectangular chamber. Each cell has a target area, preferred length-to-width ratio, fixed orientation and shape-resistance coefficient. The ten colours are editable materials. A packing seed sets the starting sites, orientations and shuffled order for assigning types. The share controls set type counts by largest remainder. Changing relative area redistributes a fixed total occupied area. Changing material properties can change the settled starting outlines even with the same seed.
 

@@ -2,6 +2,7 @@ import {W,names,colours,defaults,packing} from './model.mjs';
 import {draw,sample} from './render.mjs';
 const $=id=>document.getElementById(id);
 const cfg=defaults(), refs=new Map(), slots={}, typeButtons=[];
+let pending=null;
 let editing=0, run=null, previous=null, generation=0, worker=null, timer=null;
 if(window.top===window)$('solo').hidden=false;
 function slider(group,key,title,min,max,step,format) {
@@ -20,19 +21,21 @@ slider('pressInputs','fill','Initial space filled',45,85,1,v=>v+'%');
 slider('pressInputs','squeeze','Squeeze',0,95,1,v=>((1-cfg.fill/100)*v).toFixed(1)+'% narrower');
 slider('pressInputs','pace','Closing time',12,48,6,v=>v+' steps');
 slider('pressInputs','cycles','Cycles',1,3,1,v=>v);
+slider('materialInputs','reach','Arm length',0,100,1,v=>(v||0)+'%');
 slider('materialInputs','share','Share of mixture',0,6,1,v=>v+' parts');
 slider('materialInputs','size','Relative area',.65,1.65,.05,v=>v.toFixed(2)+'×');
 slider('materialInputs','aspect','Preferred length / width',1,2,.05,v=>v.toFixed(2));
 slider('materialInputs','resistance','Shape resistance',.5,2,.05,v=>v.toFixed(2)+'×');
 function editingControls() {
   for(const [key,s] of Object.entries(slots)){
-    const val=(s.perType?cfg.types[editing]:cfg)[key];
+    const val=(s.perType?cfg.types[editing]:cfg)[key]??0;
     s.input.value=val;s.value.textContent=s.format(val);
   }
   for(const [i,b] of typeButtons.entries()){
     b.setAttribute('aria-pressed',String(editing===i));
     b.classList.toggle('absent',!cfg.types[i].share);
   }
+  $('armStyle').value=cfg.types[editing].shape||'fork';
   $('materialName').textContent=names[editing];
   let n=0;
   if(cfg.types.some(t=>t.share))n=packing(cfg).filter(c=>c.type===editing).length;
@@ -48,7 +51,9 @@ function edit(){
   cancel();stop();editingControls();
   $('run').disabled=!cfg.types.some(t=>t.share);
   $('new').disabled=$('run').disabled;
-  $('status').textContent=$('run').disabled?'Give at least one type a share.':'Settings changed. Run to see the result.';
+  clearTimeout(pending);
+  $('status').textContent=$('run').disabled?'Give at least one type a share.':'Updating this frame…';
+  if(!$('run').disabled)pending=setTimeout(()=>solve(false,true),100);
 }
 names.forEach((name,i)=>{
   const b=document.createElement('button');b.style.setProperty('--tone',colours[i]);
@@ -94,6 +99,7 @@ function show(){
   const k=Number($('frame').value),f=run.frames[k],links=$('links').checked;
   draw($('field'),run,f,links);shapeStat();
   $('phase').textContent=f.phase+' · cycle '+f.cycle+' of '+run.cfg.cycles;
+  $('phase').textContent+=f.armScale<1?' · arms at '+Math.round(f.armScale*100)+'% of request':'';
   $('time').textContent=k+' / '+(run.frames.length-1);
   $('fillNow').textContent=Math.round(run.cfg.fill*W/f.width)+'%';
   const [lost,gained]=contactDelta(run,k);$('lost').textContent=lost;$('gained').textContent=gained;
@@ -116,7 +122,8 @@ function play(){
     if(+$('frame').value===run.frames.length-1)stop();
   },90);
 }
-function present(result,first) {
+function present(result,first,keepFrame=false) {
+  const oldIndex=run&&keepFrame?matchingFrame(result,run,+$('frame').value):0;
   const fragment=Math.max(...result.frames.map(f=>f.fragmentFraction));
   const areaError=Math.max(...result.frames.map(f=>f.maxError));
   if(areaError>.06 || fragment>.015) {
@@ -128,11 +135,11 @@ function present(result,first) {
   run=result;stop();
   $('play').disabled=$('rewind').disabled=$('frame').disabled=false;
   $('frame').max=result.frames.length-1;
-  $('frame').value=first?result.frames.findIndex(f=>f.phase==='Hold')+6:0;
+  $('frame').value=first?result.frames.findIndex(f=>f.phase==='Hold')+6:oldIndex;
   $('runInfo').textContent=summary(result)+' · '+(result.backend==='native'?'ICeShOT reference run':'Browser OT solve');
   $('status').textContent='';
   show();
-  if(!first && !window.matchMedia('(prefers-reduced-motion: reduce)').matches)play();
+  if(!first && !keepFrame && !window.matchMedia('(prefers-reduced-motion: reduce)').matches)play();
 }
 async function reference(strength){
   if(!refs.has(strength)){
@@ -141,7 +148,8 @@ async function reference(strength){
   }
   return refs.get(strength);
 }
-async function solve(first=false){
+async function solve(first=false,keepFrame=false){
+  clearTimeout(pending);
   if(!cfg.types.some(t=>t.share))return;
   cancel();stop();const token=generation,chosen=structuredClone(cfg);
   $('status').textContent='Solving…';
@@ -150,7 +158,7 @@ async function solve(first=false){
     const nativePreset=nativePacking && chosen.cycles===1 && chosen.pace===base.pace && [0,22,83].includes(chosen.squeeze);
     if(nativePreset){
       const result=await reference(chosen.squeeze);
-      if(token===generation)present(result,first);
+      if(token===generation)present(result,first,keepFrame);
     }else{
       let initial=null;
       if(nativePacking)initial=(await reference(83)).frames[0];
@@ -162,7 +170,7 @@ async function solve(first=false){
         worker.terminate();worker=null;
         try{
           if(data.error)throw Error(data.error);
-          present(data.result,first);
+          present(data.result,first,keepFrame);
         }catch(e){$('status').textContent=e.message;}
       };
       worker.onerror=e=>{if(token===generation){cancel();$('status').textContent='The solve stopped. '+e.message;}};
@@ -176,6 +184,7 @@ $('save').onclick=()=>{
   const a=document.createElement('a');a.href=url;a.download='press-'+run.cfg.seed+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 };
+$('armStyle').onchange=()=>{cfg.types[editing].shape=$('armStyle').value;if(!cfg.types[editing].reach)cfg.types[editing].reach=45;edit();};
 $('run').onclick=()=>solve();
 $('new').onclick=()=>{cfg.seed=(cfg.seed*1664525+1013904223)>>>0;edit();solve();};
 $('rewind').onclick=()=>{stop();$('frame').value=0;show();};

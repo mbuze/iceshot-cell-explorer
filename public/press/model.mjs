@@ -1,5 +1,7 @@
 // Browser backend for the fixed-area, quadratic ICeShOT problem with a zero-cost void.
-export const W = 9, H = 6, NX = 168, NY = 112, N = 30;
+import {W,H,NX,NY,N} from './grid.mjs';
+export {W,H,NX,NY,N} from './grid.mjs';
+import {armMetrics,moveSites,reachLimits} from './arms.mjs';
 export const names = ['Jade','Apricot','Iris','Lagoon','Rose','Lime','Ochre','Lilac','Glacier','Coral'];
 export const colours = ['#57b7a1','#f1aa62','#9e91d5','#46a2c0','#de87ab','#abc974','#d8bd68','#bea1c2','#85cfda','#e28272'];
 export function defaults() {
@@ -28,7 +30,8 @@ export function packing(cfg) {
   return Array.from(ids,(type,i)=>{
     const t=cfg.types[type], a=rng()*Math.PI, c=Math.cos(a),s=Math.sin(a);
     const p=t.resistance/t.aspect, q=t.resistance*t.aspect;
-    return {type, area:W*H*cfg.fill/100*t.size/total, k:t.resistance,
+    const arms=t.reach?armMetrics(t.shape||'fork',a,t.resistance,t.reach/100):[];
+    return {type, angle:a, arms, area:W*H*cfg.fill/100*t.size/total, k:t.resistance,
       x:W*((i%6)+.5+.56*(rng()-.5))/6,
       y:H*(Math.floor(i/6)+.5+.60*(rng()-.5))/5,
       xx:p*c*c+q*s*s, xy:(p-q)*c*s, yy:p*s*s+q*c*c};
@@ -51,15 +54,31 @@ export function allocate(cells,f,width,nx=NX,ny=NY) {
   const dx=width/nx, dy=H/ny, x0=(W-width)/2;
   const best=new Float32Array(nx*ny), labels=new Uint8Array(nx*ny).fill(255);
   for(let i=0;i<cells.length;i++){
-    const g=cells[i], det=g.xx*g.yy-g.xy*g.xy;
+    const g=cells[i];
     if(f[i]<=0)continue;
-    const rx=Math.sqrt(f[i]*g.yy/det),ry=Math.sqrt(f[i]*g.xx/det);
+    paint(g,i,false);
+    if(g.arms)for(const arm of g.arms)paint(arm,i,true);
+  }
+  function paint(metric,i,half){
+    const g=cells[i], det=metric.xx*metric.yy-metric.xy*metric.xy;
+    const bent=half && metric.bend;
+    const pad=bent?Math.abs(metric.bend)*f[i]/metric.axial:0;
+    const rx=Math.sqrt(f[i]*metric.yy/det)+(bent?Math.abs(metric.ey)*pad:0);
+    const ry=Math.sqrt(f[i]*metric.xx/det)+(bent?Math.abs(metric.ex)*pad:0);
     const loX=Math.max(0,Math.ceil((g.x-rx-x0)/dx-.5)),hiX=Math.min(nx-1,Math.floor((g.x+rx-x0)/dx-.5));
     const loY=Math.max(0,Math.ceil((g.y-ry)/dy-.5)),hiY=Math.min(ny-1,Math.floor((g.y+ry)/dy-.5));
     for(let y=loY;y<=hiY;y++){
-      const v=(y+.5)*dy-g.y, by=g.yy*v*v-f[i],cross=2*g.xy*v;
+      const v=(y+.5)*dy-g.y, by=metric.yy*v*v-f[i],cross=2*metric.xy*v;
       for(let x=loX;x<=hiX;x++){
-        const u=x0+(x+.5)*dx-g.x,cost=u*(g.xx*u+cross)+by, z=y*nx+x;
+        const u=x0+(x+.5)*dx-g.x;
+        if(half && u*metric.ex+v*metric.ey<0)continue;
+        let cost=u*(metric.xx*u+cross)+by;
+        if(bent){
+          const along=u*metric.ex+v*metric.ey;
+          const side=v*metric.ex-u*metric.ey-metric.bend*along*along;
+          cost=metric.axial*along*along+metric.lateral*side*side-f[i];
+        }
+        const z=y*nx+x;
         if(cost<best[z]){best[z]=cost;labels[z]=i;}
       }
     }
@@ -113,7 +132,7 @@ function detachedFraction(labels,sums) {
   }
   return Math.max(...sums.map((s,i)=>1-largest[i]/s[0]));
 }
-export function measure(cells,labels,width,inspect=true) {
+export function measure(cells,labels,width,inspect=true,minEdges=4) {
   const n=cells.length, sums=Array.from({length:n},()=>[0,0,0,0,0,0]);
   const edges=new Uint16Array(n*n), dx=width/NX, dy=H/NY, left=(W-width)/2;
   for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
@@ -124,7 +143,7 @@ export function measure(cells,labels,width,inspect=true) {
       if(j!==255 && j!==i) edges[Math.min(i,j)*n+Math.max(i,j)]++;
   }
   const contacts=[];
-  edges.forEach((v,i)=>{if(v>=4)contacts.push(i);});
+  edges.forEach((v,i)=>{if(v>=minEdges)contacts.push(i);});
   const centres=[],aspect=[],sizeError=[];
   sums.forEach(([count,x,y,xx,yy,xy],i)=>{
     if(!count)throw Error('A cell lost its area.');
@@ -145,16 +164,34 @@ function relax(cells,centres) {
 export function simulate(cfg,progress=()=>{},initial=null) {
   const cells=packing(cfg), material=cells.map(c=>({...c})), f=cells.map(c=>c.area*c.k/Math.PI);
   const frames=[];
+  const branched=cells.some(c=>c.arms?.length);
+  function solveAt(width,inspect){
+    const weights=f.slice();
+    for(const factor of branched?reachLimits:[1]){
+      if(branched)for(const [i,c] of cells.entries()){
+        const type=cfg.types[c.type];
+        c.arms=armMetrics(type.shape||'fork',c.angle,c.k,(type.reach||0)*factor/100);
+        f[i]=weights[i];
+      }
+      const lab=balance(cells,f,width),m=measure(cells,lab,width,inspect||branched);
+      if(!branched || (m.fragmentFraction<=.015 && m.maxError<=.06) || factor===0)
+        return {lab,m,armScale:factor};
+    }
+  }
+  function advance(lab,m,width){
+    if(branched)moveSites(cells,m,lab,width,()=>.17);
+    else relax(cells,m.centres);
+  }
   if(initial){
     cells.forEach((c,i)=>{[c.x,c.y]=initial.sites[i];f[i]=initial.f[i];});
   }
   for(let step=0;!initial && step<120;step++){
-    const m=measure(cells,balance(cells,f,W),W,false);relax(cells,m.centres);
+    const {lab,m}=solveAt(W,false);advance(lab,m,W);
   }
   for(const entry of schedule(cfg)){
-    const m=measure(cells,balance(cells,f,entry.width),entry.width);
-    frames.push({...entry,...m,sites:cells.map(c=>[c.x,c.y]),f:f.slice()});
-    relax(cells,m.centres);
+    const {lab,m,armScale}=solveAt(entry.width,true);
+    frames.push({...entry,...m,armScale,sites:cells.map(c=>[c.x,c.y]),f:f.slice()});
+    advance(lab,m,entry.width);
     if(frames.length%8===0)progress(frames.length);
   }
   return {cfg,material,frames};

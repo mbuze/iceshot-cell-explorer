@@ -17,13 +17,13 @@ jobs:
       - name: Solve and replay on the published page
         shell: python
         run: |
-          import os, time
+          import os, re, time
           from pathlib import Path
           from urllib.error import URLError
           from urllib.request import urlopen
           from playwright.sync_api import sync_playwright, expect
           root = "https://mbuze.github.io/iceshot-cell-explorer/"
-          assets = ["notebook/squeeze.html", "public/press/press.mjs", "public/press/model.mjs"]
+          assets = ["notebook/squeeze.html", "public/press/index.html", "public/press/reach.mjs", "public/press/model.mjs", "public/press/reach-native.json"]
           for attempt in range(40):
               try:
                   for name in assets:
@@ -43,9 +43,38 @@ jobs:
               errors = []
               page.on("pageerror",lambda e: errors.append(str(e)))
               page.goto(root+"squeeze/")
-              f = page.frame_locator('iframe[title="Cell squeeze playground"]')
+              f = page.frame_locator('iframe[title="Cell shape playground"]')
               try:
-                  expect(f.locator("#phase")).to_contain_text("Hold",timeout=150000)
+                  expect(f.locator("#result")).to_contain_text("Touching 4 cells here, 1 in the control",timeout=150000)
+                  initial = f.locator("#tissue").evaluate("c=>c.toDataURL()")
+                  f.locator("#reach").focus()
+                  page.keyboard.press("Home")
+                  expect(f.locator("#result")).to_contain_text("Span 1.00×")
+                  assert initial != f.locator("#tissue").evaluate("c=>c.toDataURL()")
+                  f.get_by_role("button",name="Fan",exact=True).click()
+                  page.keyboard.press("Tab")
+                  f.locator("#reach").focus()
+                  page.keyboard.press("End")
+                  expect(f.locator("#tissue")).to_have_attribute("data-solved", re.compile('"reach":100.*"shape":"fan"'))
+                  f.locator("#round").click()
+                  expect(f.locator("#round")).to_have_attribute("aria-pressed","true")
+                  f.locator("#current").click()
+                  f.locator("#cell").select_option("7")
+                  f.locator("#stretch").focus()
+                  page.keyboard.press("End")
+                  expect(f.locator("#tissue")).to_have_attribute("data-solved", re.compile('"stretch":2.8'))
+                  f.locator("#press").focus()
+                  page.keyboard.press("End")
+                  expect(f.locator("#tissue")).to_have_attribute("data-solved", re.compile('"press":95'))
+                  page.set_viewport_size({"width":390,"height":840})
+                  assert f.locator("main").evaluate("el => el.scrollWidth <= window.innerWidth")
+                  f.locator("#reset").click()
+                  f.locator("#cell").select_option("21")
+                  page.set_viewport_size({"width":1440,"height":1000})
+                  page.screenshot(path="reach-preview.png",full_page=True)
+                  f.get_by_role("link",name="Open the ten-type squeeze-and-release experiment").click()
+                  f=page
+                  expect(f.locator("#phase")).to_contain_text("Hold",timeout=30000)
                   f.locator("#frame").focus()
                   page.keyboard.press("End")
                   expect(f.locator("#lost")).to_have_text("2")
@@ -66,6 +95,12 @@ jobs:
                   f.get_by_role("button",name="Run same packing",exact=True).click()
                   expect(f.locator("#runInfo")).to_contain_text("Browser OT solve",timeout=30000)
                   expect(f.locator("#shapeStat")).to_contain_text("Coral cells")
+                  f.locator("#frame").focus()
+                  page.keyboard.press("End")
+                  frame_before=f.locator("#frame").input_value()
+                  f.locator("#armStyle").select_option("fan")
+                  expect(f.locator("#status")).to_have_text("",timeout=30000)
+                  assert f.locator("#frame").input_value()==frame_before
                   f.locator("#play").click()
                   expect(f.locator("#play")).to_have_text("Pause")
                   f.locator("#play").click()
@@ -83,4 +118,6 @@ jobs:
         if: always()
         with:
           name: press-preview
-          path: press-preview.png
+          path: |
+            press-preview.png
+            reach-preview.png

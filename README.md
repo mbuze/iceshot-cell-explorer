@@ -1,6 +1,6 @@
 # Cell simulations with ICeShOT
 
-[**Squeeze and release**](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) plays a mixture of up to ten cell types through a press cycle. [Model, solver checks and reproduction](PRESS.md).
+[**How far can a cell reach?**](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) compares forked, fan-shaped and spindle-shaped cells with a round control. The [ten-type press](https://mbuze.github.io/iceshot-cell-explorer/public/press/cycle.html) follows a whole squeeze-and-release cycle. [Model, solver checks and reproduction](PRESS.md).
 
 ## One cell crossing a tissue
 
