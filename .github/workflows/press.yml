@@ -42,8 +42,8 @@ jobs:
               page = browser.new_page(viewport={"width":1440,"height":1000},reduced_motion="reduce")
               errors = []
               page.on("pageerror",lambda e: errors.append(str(e)))
-              page.goto(root+"squeeze/")
-              f = page.frame_locator('iframe[title="Cell shape playground"]')
+              page.goto(root+"public/press/")
+              f = page
               try:
                   expect(f.locator("#result")).to_contain_text("Touching 4 cells here, 1 in the control",timeout=150000)
                   initial = f.locator("#tissue").evaluate("c=>c.toDataURL()")
@@ -77,9 +77,9 @@ jobs:
                   f.locator("#cell").select_option("21")
                   page.set_viewport_size({"width":1440,"height":1000})
                   page.screenshot(path="reach-preview.png",full_page=True)
-                  f.get_by_role("link",name="Open the ten-type squeeze-and-release experiment").click()
-                  f=page
-                  expect(f.locator("#phase")).to_contain_text("Hold",timeout=30000)
+                  page.goto(root+"squeeze/")
+                  f=page.frame_locator('iframe[title="Ten-type cell mixer"]')
+                  expect(f.locator("#phase")).to_contain_text("Hold",timeout=150000)
                   f.locator("#frame").focus()
                   page.keyboard.press("End")
                   expect(f.locator("#lost")).to_have_text("2")

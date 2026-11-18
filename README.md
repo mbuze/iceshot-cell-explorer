@@ -1,6 +1,6 @@
 # Cell simulations with ICeShOT
 
-[**How far can a cell reach?**](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) compares forked, fan-shaped and spindle-shaped cells with a round control. The [ten-type press](https://mbuze.github.io/iceshot-cell-explorer/public/press/cycle.html) follows a whole squeeze-and-release cycle. [Model, solver checks and reproduction](PRESS.md).
+[**Ten-type cell mixer**](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) follows a mixture through a squeeze-and-release cycle. The separate [cell reach experiment](https://mbuze.github.io/iceshot-cell-explorer/public/press/) compares branched cells with a round control. [Model, solver checks and reproduction](PRESS.md).
 
 ## One cell crossing a tissue
 
