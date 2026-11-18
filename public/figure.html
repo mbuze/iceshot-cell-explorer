@@ -4,9 +4,9 @@
 <body>
 <main>
 <div class="settings">
-<label>Tissue<select id="tissue"><option value="mixed">Mixed cell sizes</option><option value="aligned">Aligned, elongated cells</option><option value="mosaic">Even-sized mosaic</option></select></label>
+<label>Tissue<select aria-label="Tissue" id="tissue"><option value="mixed">Mixed cell sizes</option><option value="aligned">Aligned, elongated cells</option><option value="mosaic">Even-sized mosaic</option></select></label>
 <fieldset><legend>Gold cell shape</legend><div class="choices" id="shapes"><label><input type="radio" name="shape" value="rounded" checked><span>Rounded</span></label><label><input type="radio" name="shape" value="spindle"><span>Spindle</span></label><label><input type="radio" name="shape" value="branched"><span>Branched</span></label></div></fieldset>
-<label>Shape change<select id="strength" disabled><option value="0">None</option><option value="50">Half</option><option value="100" selected>Full</option></select></label>
+<label>Shape change<select aria-label="Shape change" id="strength" disabled><option value="0">None</option><option value="50">Half</option><option value="100" selected>Full</option></select></label>
 </div>
 <div class="stage">
 <div>
@@ -15,7 +15,7 @@
 </div>
 <aside>
 <fieldset><legend>Gold cell motion</legend><div class="choices"><label><input type="radio" name="motion" value="1" checked><span>Cross tissue</span></label><label><input type="radio" name="motion" value="0"><span>Stay put</span></label></div></fieldset>
-<label>Track a cell<select id="tracked"></select></label>
+<label>Track a cell<select aria-label="Track a cell" id="tracked"></select></label>
 <p class="hint">Click a cell to follow it. Click its starting ring to rewind.</p>
 <div class="metrics"><div><span>Distance from start</span><strong id="distance">—</strong></div><div><span id="otherLabel">Same cell with gold held still</span><strong id="other">—</strong></div></div>
 <fieldset class="layers"><legend>Show on tissue</legend><label><input type="checkbox" id="origin" checked> Starting centre</label><label><input type="checkbox" id="trails" checked> Other cells’ tracks</label><label><input type="checkbox" id="borders"> Starting borders</label><label><input type="checkbox" id="full"> Full sheet</label></fieldset>
