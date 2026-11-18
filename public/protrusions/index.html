@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protrusions and neighbours</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<header id="standalone" hidden><h1>Protrusions and neighbours</h1><p>Watch the same set of protrusion attempts in open space and among other cells.</p></header>
+<div class="patches">
+  <section class="patch">
+    <div class="caption"><h2>Open space</h2><span id="open-occupancy"></span></div>
+    <canvas id="open" width="642" height="420" role="img" aria-label="Pigment cell extending protrusions in open space"></canvas>
+    <div class="outcome" id="open-outcome"></div>
+  </section>
+  <section class="patch">
+    <div class="caption"><h2>Among neighbours</h2><span id="mixed-occupancy"></span></div>
+    <canvas id="mixed" width="642" height="420" role="img" aria-label="Pigment cell extending protrusions between neighbouring cells"></canvas>
+    <div class="outcome" id="mixed-outcome"></div>
+  </section>
+</div>
+<div class="player">
+  <button id="play" disabled>Play</button>
+  <button id="restart" disabled>Go to start</button>
+  <input id="time" type="range" min="0" max="152" value="0" aria-label="Simulation step" disabled>
+  <output id="step" for="time"></output>
+</div>
+<div class="inspect">
+  <label for="event">Track a protrusion</label>
+  <select id="event" disabled><option value="">All protrusions</option></select>
+  <button id="inspect-result" disabled>See where it ended</button>
+  <label class="toggle"><input id="trail" type="checkbox" checked> Body trail</label>
+</div>
+<div class="key" id="key" hidden><span><i class="body-dot"></i> Body</span><span><i class="tip-dot"></i> Selected tip or its furthest point</span></div>
+<div class="parameters">
+  <section><h2>Protrusions</h2><div id="protrusionSettings"></div><button id="newAttempts">New attempts</button></section>
+  <section><h2>Neighbours</h2><div id="tissueSettings"></div>
+    <div class="type-list" id="types" role="group" aria-label="Neighbour cell types"></div>
+    <div class="types-actions"><button id="allTypes">Use all ten types</button><button id="newTissue">Reshuffle neighbours</button></div>
+    <details id="edit"><summary>Edit a cell type</summary>
+      <div class="edit-row"><label for="editType">Cell type</label><select id="editType"></select></div>
+      <div class="edit-row"><label for="outline">Preferred outline</label><select id="outline"><option value="round">Oval</option><option value="spindle">Spindle</option><option value="fork">Fork</option><option value="fan">Fan</option><option value="split">Split tips</option></select></div>
+      <div id="typeSettings"></div>
+    </details>
+  </section>
+</div>
+<div class="foot"><p id="status" role="status">Loading the two runs…</p><button id="reset">Restore opening settings</button><button id="save" disabled>Save run settings</button></div>
+</main>
+<script type="module" src="playground.mjs"></script>
+</body>
+</html>

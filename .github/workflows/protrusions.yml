@@ -1,0 +1,98 @@
+name: Check protrusion playground
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['protrusions.py', 'notebook/protrusions.html', 'public/protrusions/**', '.github/workflows/protrusions.yml']
+permissions:
+  contents: read
+jobs:
+  playground:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install playwright
+      - run: python -m playwright install chromium --with-deps
+      - name: Inspect matched attempts and recalculate the tissue
+        shell: python
+        run: |
+          import json, os, time
+          from pathlib import Path
+          from urllib.error import URLError
+          from urllib.request import urlopen
+          from playwright.sync_api import sync_playwright, expect
+
+          root = "https://mbuze.github.io/iceshot-cell-explorer/"
+          assets = ["notebook/protrusions.html", "public/protrusions/index.html",
+                    "public/protrusions/playground.mjs", "public/protrusions/mixed.json"]
+          for attempt in range(40):
+              try:
+                  for name in assets:
+                      query = f'?revision={os.environ["GITHUB_SHA"]}&n={attempt}'
+                      with urlopen(root+name+query,timeout=8) as res:
+                          if res.read() != Path(name).read_bytes():
+                              break
+                  else:
+                      break
+              except URLError:
+                  pass
+              time.sleep(4)
+          else:
+              raise RuntimeError("Pages has not served the requested revision")
+
+          open_run = json.loads(Path("public/protrusions/open.json").read_text())
+          mixed_run = json.loads(Path("public/protrusions/mixed.json").read_text())
+          open_events = open_run["events"]
+          mixed_events = mixed_run["events"]
+          proposal = ("id", "start", "life", "angle", "length", "bend")
+          assert [[p[k] for k in proposal] for p in open_events] == [[p[k] for k in proposal] for p in mixed_events]
+          trial = next((a for a,b in zip(open_events,mixed_events)
+                        if a["caught"] is not None and b["far"] and b["caught"] is None
+                        and b["start"]+b["life"]<=152), None)
+          assert trial is not None
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page(viewport={"width":1440,"height":1020},reduced_motion="reduce")
+              errors = []
+              page.on("pageerror",lambda e: errors.append(str(e)))
+              page.goto(root+"protrusions/")
+              f = page.frame_locator('iframe[title="Protrusion experiment"]')
+              try:
+                  expect(f.locator("#status")).to_have_text("Opening runs solved with ICeShOT.",timeout=150000)
+                  f.locator("#event").select_option(str(trial["id"]))
+                  f.locator("#inspect-result").click()
+                  expect(f.locator("#open-outcome")).to_contain_text("Body reached the earlier tip")
+                  expect(f.locator("#mixed-outcome")).to_contain_text("Retracted before the body arrived")
+                  f.locator("#event").select_option("")
+                  f.locator("#restart").click()
+                  f.locator("#play").click()
+                  expect(f.locator("#step")).not_to_have_text("0 / 152")
+                  f.locator("#play").click()
+                  f.locator("#fill").focus()
+                  page.keyboard.press("Home")
+                  expect(f.locator("#status")).to_have_text("Both views updated.",timeout=60000)
+                  expect(f.locator("#mixed-occupancy")).to_contain_text("0 neighbours")
+                  f.locator("#restart").click()
+                  assert f.locator("#open").evaluate("c=>c.toDataURL()") == f.locator("#mixed").evaluate("c=>c.toDataURL()")
+                  f.locator("#allTypes").click()
+                  expect(f.locator("#status")).to_have_text("Both views updated.",timeout=60000)
+                  expect(f.locator("#allTypes")).to_have_text("Use opening mixture")
+                  expect(f.locator(".type-list button[aria-pressed=true]")).to_have_count(10)
+                  f.locator("#life").focus()
+                  page.keyboard.press("Home")
+                  expect(f.locator("#status")).to_have_text("Both views updated.",timeout=60000)
+                  expect(f.locator("#event")).not_to_be_disabled()
+                  f.locator("#reset").click()
+                  expect(f.locator("#status")).to_have_text("Opening runs solved with ICeShOT.",timeout=30000)
+                  page.set_viewport_size({"width":390,"height":844})
+                  assert f.locator("main").evaluate("el=>el.scrollWidth<=innerWidth")
+                  assert not errors, errors
+              finally:
+                  page.screenshot(path="protrusions.png",full_page=True)
+                  browser.close()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protrusions-preview
+          path: protrusions.png

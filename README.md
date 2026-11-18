@@ -2,6 +2,8 @@
 
 [**Ten-type cell mixer**](https://mbuze.github.io/iceshot-cell-explorer/squeeze/) follows a mixture through a squeeze-and-release cycle. The separate [cell reach experiment](https://mbuze.github.io/iceshot-cell-explorer/public/press/) compares branched cells with a round control. [Model, solver checks and reproduction](PRESS.md).
 
+[**Protrusions and neighbours**](https://mbuze.github.io/iceshot-cell-explorer/protrusions/) plays matched attempts in open space and in a mixture of other cells. [Model and measurements](PROTRUSIONS.md).
+
 ## One cell crossing a tissue
 
 [Open the marimo notebook](https://mbuze.github.io/iceshot-cell-explorer/) · [Open just the interactive figure](https://mbuze.github.io/iceshot-cell-explorer/public/figure.html)

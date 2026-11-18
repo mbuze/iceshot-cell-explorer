@@ -1,0 +1,69 @@
+:root {
+  color: #203830;
+  background: #fbfaf4;
+  font: 16px/1.42 "Source Sans 3", system-ui, sans-serif;
+  accent-color: #2a695c;
+}
+* {box-sizing: border-box}
+body {margin: 0}
+main {max-width: 1160px; margin: auto; padding: 12px}
+[hidden] {display: none !important}
+h1,h2,p {margin: 0}
+h1,h2 {font-family: "Instrument Serif",Georgia,serif; font-weight: normal}
+h1 {font-size: clamp(34px,5vw,52px); line-height: 1.04; margin-bottom: 9px}
+h2 {font-size: 24px}
+header {margin-bottom: 17px}
+.patches {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px}
+.caption {display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 1px 10px; margin-bottom: 5px}
+.caption span {font-size: 13px; color: #4c685c}
+canvas {width: 100%; display: block; border-radius: 6px; background: #152a30}
+.outcome {font-size: 14px; min-height: 2.7em; margin-top: 5px}
+.outcome strong {font-weight: 650}
+.player,.inspect,.key,.foot,.types-actions {display: flex; align-items: center; flex-wrap: wrap; gap: 8px}
+.player {padding: 8px 0}
+button,select {font: inherit; color: inherit; border: 1px solid #99aba0; border-radius: 5px; background: #fffefa; padding: 4px 8px; cursor: pointer}
+button:disabled,select:disabled {opacity: .55; cursor: default}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible {outline: 3px solid #b97537; outline-offset: 2px}
+#play {background: #24594e; color: white; border-color: #24594e; min-width: 62px}
+#time {flex: 1; min-width: 65px}
+#step {font-size: 14px; min-width: 59px; text-align: right}
+.inspect {border-top: 1px solid #b9c8be; padding: 8px 0; font-size: 14px}
+.toggle {margin-left: auto}
+.key {font-size: 13px; color: #496459; gap: 14px}
+.key i {border-radius: 50%; width: .65em; height: .65em; display: inline-block; margin-right: .15em}
+.body-dot {background: #d4a162; border: 1px solid #6c452d}
+.tip-dot {background: #9ac3aa; border: 1px solid #2d6b58}
+.parameters {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; border-top: 1px solid #b9c8be; padding-top: 10px; margin-top: 9px}
+.parameters > section {min-width: 0}
+.parameters h2 {margin-bottom: 7px}
+.slider {display: grid; grid-template-columns: 1fr auto; align-items: baseline; margin: 6px 0; gap: 2px 6px}
+.slider input {grid-column: 1/-1; margin: 0; width: 100%; min-height: 19px}
+.slider output, #step {font-variant-numeric: tabular-nums}
+.slider output {font-size: 13px; color: #4c685c}
+.type-list {display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0}
+.type-list button {font-size: 13px; padding: 3px 7px; opacity: .68}
+.type-list i {width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; background: var(--cell-colour)}
+.type-list [aria-pressed=true] {background: #e8efe6; border-color: #678c7b; opacity: 1}
+.types-actions,.foot {font-size: 13px}
+details {margin-top: 9px; font-size: 14px}
+summary {cursor: pointer}
+.edit-row {display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin: 5px 0}
+.foot {margin-top: 12px; padding-top: 7px; border-top: 1px solid #b9c8be}
+#status {flex: 1; min-width: min(190px,100%); color: #426455}
+@media(max-width: 650px) {
+  main {padding: 5px}
+  h2 {font-size: 20px}
+  .patches {gap: 6px}
+  .caption {min-height: 2.9em; display: block}
+  .caption span {font-size: 11px}
+  .outcome,.player,.inspect {font-size: 12px}
+  .player,.inspect {gap: 4px}
+  .toggle {margin-left: 0}
+  .parameters {gap: 11px}
+  .slider {font-size: 13px}
+  .slider output {font-size: 11px}
+  #event {max-width: 100%}
+}
+@media(max-width: 420px) {
+  .parameters {grid-template-columns: 1fr}
+}

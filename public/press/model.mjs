@@ -58,6 +58,10 @@ export function allocate(cells,f,width,nx=NX,ny=NY) {
     if(f[i]<=0)continue;
     paint(g,i,false);
     if(g.arms)for(const arm of g.arms)paint(arm,i,true);
+    if(g.probes)for(const probe of g.probes){
+      paintSegment(i,g.x,g.y,probe[0],probe[1]);
+      paintSegment(i,probe[0],probe[1],probe[2],probe[3]);
+    }
   }
   function paint(metric,i,half){
     const g=cells[i], det=metric.xx*metric.yy-metric.xy*metric.xy;
@@ -78,6 +82,27 @@ export function allocate(cells,f,width,nx=NX,ny=NY) {
           const side=v*metric.ex-u*metric.ey-metric.bend*along*along;
           cost=metric.axial*along*along+metric.lateral*side*side-f[i];
         }
+        const z=y*nx+x;
+        if(cost<best[z]){best[z]=cost;labels[z]=i;}
+      }
+    }
+  }
+  function paintSegment(i,ax,ay,bx,by){
+    const weight=f[i]-.48;
+    if(weight<=0)return;
+    const r=Math.sqrt(weight/19.5),vx=bx-ax,vy=by-ay;
+    const denom=vx*vx+vy*vy;
+    if(denom<=1e-10)return;
+    const xMin=Math.max(0,Math.ceil((Math.min(ax,bx)-r-x0)/dx-.5));
+    const xMax=Math.min(nx-1,Math.floor((Math.max(ax,bx)+r-x0)/dx-.5));
+    const yMin=Math.max(0,Math.ceil((Math.min(ay,by)-r)/dy-.5));
+    const yMax=Math.min(ny-1,Math.floor((Math.max(ay,by)+r)/dy-.5));
+    for(let y=yMin;y<=yMax;y++){
+      const v=(y+.5)*dy-ay;
+      for(let x=xMin;x<=xMax;x++){
+        const u=x0+(x+.5)*dx-ax;
+        const t=Math.max(0,Math.min(1,(u*vx+v*vy)/denom));
+        const cost=19.5*((u-t*vx)**2+(v-t*vy)**2)-weight;
         const z=y*nx+x;
         if(cost<best[z]){best[z]=cost;labels[z]=i;}
       }
@@ -112,7 +137,7 @@ export function balance(cells,f,width) {
   bestF.forEach((v,i)=>{f[i]=v;});
   return bestLabels;
 }
-function detachedFraction(labels,sums) {
+function detachedFractions(labels,sums) {
   const seen=new Uint8Array(labels.length),stack=new Int32Array(labels.length);
   const largest=new Uint32Array(sums.length);
   for(let z=0;z<labels.length;z++){
@@ -130,7 +155,7 @@ function detachedFraction(labels,sums) {
     }
     largest[id]=Math.max(largest[id],count);
   }
-  return Math.max(...sums.map((s,i)=>1-largest[i]/s[0]));
+  return sums.map((s,i)=>1-largest[i]/s[0]);
 }
 export function measure(cells,labels,width,inspect=true,minEdges=4) {
   const n=cells.length, sums=Array.from({length:n},()=>[0,0,0,0,0,0]);
@@ -152,7 +177,9 @@ export function measure(cells,labels,width,inspect=true,minEdges=4) {
     centres.push([x,y]);aspect.push(Math.sqrt((xx+yy+d)/Math.max(1e-8,xx+yy-d)));
     sizeError.push(Math.abs(count*dx*dy/cells[i].area-1));
   });
-  return {centres,aspect,contacts,maxError:Math.max(...sizeError),fragmentFraction:inspect?detachedFraction(labels,sums):0};
+  const fragments=inspect?detachedFractions(labels,sums):[];
+  return {centres,aspect,contacts,maxError:Math.max(...sizeError),
+    fragmentFraction:fragments.length?Math.max(...fragments):0,fragments};
 }
 function relax(cells,centres) {
   cells.forEach((c,i)=>{
