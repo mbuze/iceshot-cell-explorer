@@ -18,6 +18,10 @@ The gold cell's target area is 2.15 times the mean host area. The host sites tak
 
 In the mixed-size rounded run, background cell 9 finished 1.20 widths from its starting centre, versus 0.03 in the matched stationary control. At the final frame the crossing tissue had lost 19 original host–host contacts and gained 17. The held control lost 4 and gained 8. These counts compare contact sets with frame zero. A pair counts when its interface spans at least four raster edges. The viewer initially selects the host with the largest excursion in the chosen crossing run. This illustrates the largest movements in this one patch. Click another host to see how the response varies.
 
+## When one cell occupies two patches
+
+In the crossing run with mixed cell sizes and full branching, select background cell 17 at frame 13. Its two patches contain 236 and 210 of the original grid pixels. They remain separate even when pixels touching only at corners count as connected. Both patches have the same cell identity and contribute to its area centroid. This is a limitation for interpreting the track as the motion of a single body. The retry in this example checks the gold cell only.
+
 ## Reproduce
 
 Native notebook: install marimo 0.23.5 and run `marimo run explorer.py`. For the exported presentation, serve this directory with `python -m http.server`; the notebook downloads its browser Python runtime on first use. The linked standalone figure uses the same files and controls. The browser replays precalculated runs.

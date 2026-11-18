@@ -129,7 +129,7 @@ function draw() {
   $("distance").textContent = (distance(base.centres[selected],f.centres[selected])/100).toFixed(2)+" cell widths";
   $("other").textContent = (distance(control.frames[0].centres[selected],control.frames[k].centres[selected])/100).toFixed(2)+" cell widths";
   $("otherLabel").textContent = crossing ? "With gold held still" : "With gold crossing";
-  $("readout").textContent = "Background contacts since the start: "+f.lost+" lost, "+f.gained+" gained.";
+  $("readout").textContent = "Original neighbour pairs now apart: "+f.lost+". New pairs now touching: "+f.gained+".";
 }
 svg.addEventListener("click",e=>{
   if (!loaded) return;
