@@ -17,14 +17,14 @@ jobs:
       - name: Inspect matched attempts and recalculate the tissue
         shell: python
         run: |
-          import json, os, time
+          import json, os, re, time
           from pathlib import Path
           from urllib.error import URLError
           from urllib.request import urlopen
           from playwright.sync_api import sync_playwright, expect
 
           root = "https://mbuze.github.io/iceshot-cell-explorer/"
-          assets = ["notebook/protrusions.html", "public/protrusions/index.html",
+          assets = ["protrusions/index.html", "notebook/protrusions.html", "public/protrusions/index.html",
                     "public/protrusions/playground.mjs", "public/protrusions/model.mjs",
                     "public/press/model.mjs", "public/protrusions/mixed.json"]
           for attempt in range(40):
@@ -60,10 +60,22 @@ jobs:
               page = browser.new_page(viewport={"width":1440,"height":1020},reduced_motion="reduce")
               errors = []
               page.on("pageerror",lambda e: errors.append(str(e)))
-              page.goto(root+"protrusions/")
+              # Emulate a browser whose unversioned assets can no longer be used.
+              stale = re.compile(r"/public/(?:protrusions/(?:playground|model|raster|worker|open|mixed)|press/(?:render|model))\.(?:mjs|json)$")
+              page.route(stale,lambda route: route.abort())
+              page.goto(root+"protrusions/?revision="+os.environ["GITHUB_SHA"])
               f = page.frame_locator('iframe[title="Protrusion experiment"]')
               try:
                   expect(f.locator("#status")).to_have_text("Opening runs solved with ICeShOT.",timeout=150000)
+                  for canvas in ("#open", "#mixed"):
+                      coloured = f.locator(canvas).evaluate("""c => {
+                          const rgba = c.getContext("2d").getImageData(0,0,c.width,c.height).data;
+                          let amber = 0;
+                          for (let i=0; i<rgba.length; i+=4)
+                              if (rgba[i]>125 && rgba[i]>1.15*rgba[i+1] && rgba[i+3]>240) amber++;
+                          return amber;
+                      }""")
+                      assert coloured > 300, f"{canvas} did not paint the pigment cell"
                   f.locator("#event").select_option(str(trial["id"]))
                   f.locator("#inspect-result").click()
                   expect(f.locator("#open-outcome")).to_contain_text("Body reached the earlier tip")

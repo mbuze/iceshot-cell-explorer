@@ -1,6 +1,9 @@
-import {W,H,balance,measure} from '../press/model.mjs';
 import {armMetrics,metric} from '../press/arms.mjs';
-import {encode} from './raster.mjs';
+const release=new URL(import.meta.url).search;
+const [{W,H,balance,measure},{encode}]=await Promise.all([
+  import('../press/model.mjs'+release),
+  import('./raster.mjs'+release)
+]);
 
 export const ticks=64;
 export const grid={nx:96,ny:64,diagonal:true};

@@ -1,6 +1,5 @@
 import {armMetrics} from './arms.mjs';
-import {W,H,allocate,colours} from './model.mjs';
-const rasterLayers=new WeakMap();
+const {W,H,allocate,colours}=await import('./model.mjs'+new URL(import.meta.url).search);
 const rgb = colours.map(c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)));
 function resample({labels,width,height},nx,ny){
   const mask=new Uint8Array(nx*ny);
@@ -59,15 +58,7 @@ export function draw(canvas,run,frame,links,style=null) {
     ctx.save();ctx.strokeStyle='#3b4d51';ctx.lineWidth=1;
     ctx.beginPath();for(let x=-ch;x<cw;x+=12){ctx.moveTo(x,0);ctx.lineTo(x+ch,ch);}ctx.stroke();ctx.restore();
   }
-  if(style?.softEdges){
-    let layer=rasterLayers.get(canvas);
-    if(!layer){layer=canvas.ownerDocument.createElement('canvas');rasterLayers.set(canvas,layer);}
-    if(layer.width!==nx || layer.height!==ny){layer.width=nx;layer.height=ny;}
-    layer.getContext('2d').putImageData(im,0,0);
-    ctx.save();ctx.filter='blur(1.35px)';
-    ctx.drawImage(layer,Math.round(left),Math.round(top));
-    ctx.restore();
-  }else ctx.putImageData(im,Math.round(left),Math.round(top));
+  ctx.putImageData(im,Math.round(left),Math.round(top));
   ctx.fillStyle='#b8c6b7';
   if(!style?.noWalls)for(const x of [left-4,left+nx]) ctx.fillRect(Math.round(x),Math.round(top),4,ny);
   if(!links)return {mask,nx,ny,left:Math.round(left),top:Math.round(top),scale};
