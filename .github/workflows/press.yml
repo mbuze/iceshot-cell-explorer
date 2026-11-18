@@ -23,7 +23,7 @@ jobs:
           from urllib.request import urlopen
           from playwright.sync_api import sync_playwright, expect
           root = "https://mbuze.github.io/iceshot-cell-explorer/"
-          assets = ["notebook/squeeze.html", "public/press/index.html", "public/press/reach.mjs", "public/press/model.mjs", "public/press/reach-native.json"]
+          assets = ["notebook/squeeze.html", "public/press/index.html", "public/press/reach.mjs", "public/press/model.mjs", "public/press/reach-native.json", "public/press/arms.mjs", "public/press/render.mjs"]
           for attempt in range(40):
               try:
                   for name in assets:
@@ -68,6 +68,11 @@ jobs:
                   expect(f.locator("#tissue")).to_have_attribute("data-solved", re.compile('"press":95'))
                   page.set_viewport_size({"width":390,"height":840})
                   assert f.locator("main").evaluate("el => el.scrollWidth <= window.innerWidth")
+                  f.get_by_role("button",name="Split tips",exact=True).click()
+                  expect(f.locator("#tissue")).to_have_attribute("data-solved", re.compile('"shape":"split"'),timeout=15000)
+                  f.locator("#sweep").click()
+                  expect(f.locator("#sweep")).to_have_text("Stop sweep")
+                  f.locator("#sweep").click()
                   f.locator("#reset").click()
                   f.locator("#cell").select_option("21")
                   page.set_viewport_size({"width":1440,"height":1000})

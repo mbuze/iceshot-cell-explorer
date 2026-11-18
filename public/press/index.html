@@ -5,10 +5,10 @@
 <section class="field">
 <div class="bar"><div class="switch" aria-label="Tissue view"><button id="current" aria-pressed="true">Shaped cells</button><button id="round" aria-pressed="false">Round control</button></div><button id="reset">Reset</button></div>
 <canvas id="tissue" width="840" height="548" aria-label="Cell territories between the walls. Select a gold cell to inspect it."></canvas>
-<div class="caption"><label><input id="highlight" type="checkbox" checked> Outline new neighbours</label><span id="state" role="status">Loading tissue…</span></div>
+<div class="caption"><label><input id="highlight" type="checkbox" checked> Highlight new neighbours</label><span id="state" role="status">Loading tissue…</span></div>
 </section>
 <section class="controls" aria-label="Shape and tissue controls">
-<h2>Gold cells</h2><div class="shapes" role="group" aria-label="Preferred shape"><button data-shape="fork">Fork</button><button data-shape="fan">Fan</button><button data-shape="spindle">Spindle</button></div>
+<h2>Gold cells</h2><div class="shapes" role="group" aria-label="Preferred shape"><button data-shape="fork">Fork</button><button data-shape="split">Split tips</button><button data-shape="fan">Fan</button><button data-shape="spindle">Spindle</button></div>
 <label class="knob" for="reach"><span>Arm length</span><output id="reachValue"></output><input id="reach" type="range" min="0" max="100" step="1" value="80"></label>
 <div class="ends"><span>Round</span><span>Fully extended</span></div><button id="sweep">Sweep arm length</button>
 <h2>Surrounding tissue</h2>

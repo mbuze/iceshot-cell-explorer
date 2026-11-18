@@ -2,6 +2,7 @@ import {W,H,NX,NY} from './grid.mjs';
 export const reachLimits=[1,.92,.82,.70,.55,.35,.18,0];
 const fans={
   fork:[[.37,1,-.18],[-.52,.92,-.06],[2.92,.75,.24]],
+  split:[[.15,1.28,-.49],[.15,1.12,.55],[2.95,1.06,.53],[2.95,.88,-.37]],
   spindle:[[0,1],[Math.PI,1]],
   fan:[[-1.22,.74,-.15],[-.67,1,-.12],[.03,1.10,-.07],[.65,.92,.03],[1.22,.67,.07]]
 };
@@ -16,7 +17,7 @@ export function armMetrics(shape, angle, k, s){
       });
 }
 export function moveSites(cells,m,labels,width,mobilityFor){
-  // Gradient of the winning quadratic at each allocated pixel. A branched cell
+  // Gradient of the winning cost branch at each allocated pixel. A branched cell
   // generally cannot be advanced using its centroid and a single matrix.
   const grad=cells.map(()=>[0,0,0]);
   for(let z=0;z<labels.length;z++){

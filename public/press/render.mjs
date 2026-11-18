@@ -32,9 +32,12 @@ export function draw(canvas,run,frame,links,style=null) {
       const rim=43*Math.max(0,1-d/2);
       for(let k=0;k<3;k++){
         if(style){
-          const edge=style.selected===i?[255,242,201]:style.newIds.has(i)?[135,255,199]:tone;
-          const light=.61+.30*(1-Math.exp(-d/10))+.08*Math.sin(i*2.4);
-          im.data[b+k]=tone[k]*light+Math.exp(-d/1.45)*(edge[k]*.83+10-tone[k]*light);
+          const fresh=style.newIds.has(i);
+          const edge=style.selected===i?[255,242,201]:fresh?[172,255,217]:tone;
+          const light=.54+.40*(1-Math.exp(-d/13))+.055*Math.sin(i*2.4);
+          const inside=(fresh?[82,174,144][k]:tone[k])*light;
+          const rim=Math.exp(-d/(fresh || i===style.selected?2.7:1.4));
+          im.data[b+k]=inside+rim*(edge[k]*.90+7-inside);
         }else im.data[b+k]=tone[k]*a+rim;
       }
     }
